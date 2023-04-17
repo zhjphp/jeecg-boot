@@ -2,8 +2,10 @@ package org.jeecg.modules.polymerize.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
+import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 import org.jeecgframework.poi.excel.annotation.Excel;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -48,6 +50,11 @@ public class PolymerizeCategory implements Serializable,Comparable<PolymerizeCat
     /**是否有子节点*/
     @Excel(name = "是否有子节点(1:有)", width = 15)
     private java.lang.String hasChild;
+    /**删除状态*/
+    @Excel(name = "删除状态", width = 15)
+    @ApiModelProperty(value = "删除状态")
+    @TableLogic
+    private Integer delFlag;
 
     /**租户ID*/
     private java.lang.Integer tenantId;
