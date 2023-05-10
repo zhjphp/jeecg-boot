@@ -1,5 +1,6 @@
 package org.jeecg.modules.polymerize.controller;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -12,7 +13,9 @@ import javax.servlet.http.HttpServletResponse;
 import org.jeecg.common.api.vo.Result;
 import org.jeecg.common.system.query.QueryGenerator;
 import org.jeecg.common.util.oConvertUtils;
+import org.jeecg.modules.polymerize.entity.Crawl;
 import org.jeecg.modules.polymerize.entity.InformationSourceTask;
+import org.jeecg.modules.polymerize.service.ICrawlService;
 import org.jeecg.modules.polymerize.service.IInformationSourceTaskService;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
@@ -20,6 +23,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.extern.slf4j.Slf4j;
 
+import org.jeecg.modules.polymerize.vo.InformationSourceTaskVO;
 import org.jeecgframework.poi.excel.ExcelImportUtil;
 import org.jeecgframework.poi.excel.def.NormalExcelConstants;
 import org.jeecgframework.poi.excel.entity.ExportParams;
@@ -50,6 +54,9 @@ import org.apache.shiro.authz.annotation.RequiresPermissions;
 public class InformationSourceTaskController extends JeecgController<InformationSourceTask, IInformationSourceTaskService> {
 	@Autowired
 	private IInformationSourceTaskService informationSourceTaskService;
+
+	 @Autowired
+	 private ICrawlService crawlService;
 	
 	/**
 	 * 分页列表查询
@@ -63,14 +70,29 @@ public class InformationSourceTaskController extends JeecgController<Information
 	//@AutoLog(value = "信源任务-分页列表查询")
 	@ApiOperation(value="信源任务-分页列表查询", notes="信源任务-分页列表查询")
 	@GetMapping(value = "/list")
-	public Result<IPage<InformationSourceTask>> queryPageList(InformationSourceTask informationSourceTask,
+	public Result<IPage<InformationSourceTaskVO>> queryPageList(InformationSourceTask informationSourceTask,
 								   @RequestParam(name="pageNo", defaultValue="1") Integer pageNo,
 								   @RequestParam(name="pageSize", defaultValue="10") Integer pageSize,
 								   HttpServletRequest req) {
 		QueryWrapper<InformationSourceTask> queryWrapper = QueryGenerator.initQueryWrapper(informationSourceTask, req.getParameterMap());
 		Page<InformationSourceTask> page = new Page<InformationSourceTask>(pageNo, pageSize);
 		IPage<InformationSourceTask> pageList = informationSourceTaskService.page(page, queryWrapper);
-		return Result.OK(pageList);
+		// 为返回内容添加爬虫名称,再查一遍爬虫表,不再去写sql语句
+		List<InformationSourceTaskVO> list = new ArrayList<InformationSourceTaskVO>();
+		for (InformationSourceTask item: pageList.getRecords()) {
+			InformationSourceTaskVO tmp = new InformationSourceTaskVO(item);
+			// 查询任务指定的爬虫名称
+			Crawl crawl = crawlService.getById(tmp.getCrawlId());
+			tmp.setCrawlName(crawl.getName());
+			list.add(tmp);
+		}
+		Page<InformationSourceTaskVO> voPage = new Page<InformationSourceTaskVO>(pageNo, pageSize);
+		IPage<InformationSourceTaskVO> voPageList = voPage.setPages(pageList.getPages());
+		voPageList.setTotal(pageList.getTotal());
+		voPageList.setSize(pageList.getSize());
+		voPageList.setCurrent(pageList.getCurrent());
+		voPageList.setRecords(list);
+		return Result.OK(voPageList);
 	}
 	
 	/**
