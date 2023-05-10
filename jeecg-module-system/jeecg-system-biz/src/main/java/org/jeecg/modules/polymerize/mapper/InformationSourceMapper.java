@@ -24,4 +24,7 @@ public interface InformationSourceMapper extends BaseMapper<InformationSource> {
 
     IPage<InformationSourceVO> selectInformationSource(Page<InformationSourceVO> page, @Param("informationSourceDTO") InformationSourceDTO informationSourceDTO);
 
+    IPage<InformationSourceVO> selectByComponentData(Page<InformationSourceVO> page, @Param("informationSourceDTO") InformationSourceDTO informationSourceDTO, @Param("idArray") String[] idArray);
+
+
 }

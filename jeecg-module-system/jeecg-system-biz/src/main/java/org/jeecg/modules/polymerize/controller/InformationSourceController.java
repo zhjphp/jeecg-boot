@@ -11,6 +11,7 @@ import org.jeecg.common.aspect.annotation.AutoLog;
 import org.jeecg.common.system.base.controller.JeecgController;
 import org.jeecg.common.system.query.QueryGenerator;
 import org.jeecg.common.util.oConvertUtils;
+import org.jeecg.modules.polymerize.dto.InformationSourceComponentDTO;
 import org.jeecg.modules.polymerize.dto.InformationSourceDTO;
 import org.jeecg.modules.polymerize.entity.InformationSource;
 import org.jeecg.modules.polymerize.service.IInformationSourceService;
@@ -63,6 +64,20 @@ public class InformationSourceController extends JeecgController<InformationSour
 //            return Result.OK(pageList);
 //        }
    }
+
+    /**
+     * 前端组件 JSelectInformationSourceByCategory 专用，任务添加选择信源
+     * @param informationSourceComponentDTO
+     * @return
+     */
+    @ApiOperation(value="信源管理-分页列表查询", notes="信源管理-分页列表查询")
+    @PostMapping(value = "/componentList")
+    public Result<IPage<InformationSourceVO>> queryByComponentData(@RequestBody InformationSourceComponentDTO informationSourceComponentDTO) {
+        int pageNo = informationSourceComponentDTO.getPageNo();
+        int pageSize = informationSourceComponentDTO.getPageSize();
+        IPage<InformationSourceVO> pageList = informationSourceService.queryByComponentData(informationSourceComponentDTO, pageNo, pageSize);
+        return Result.OK(pageList);
+    }
 
    /**
     * 添加

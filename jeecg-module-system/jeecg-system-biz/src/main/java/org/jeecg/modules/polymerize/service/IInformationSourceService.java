@@ -17,6 +17,8 @@ public interface IInformationSourceService extends IService<InformationSource> {
 
     IPage<InformationSourceVO> queryPageList(InformationSourceDTO informationSourceDTO, Integer pageNo, Integer pageSize);
 
+    IPage<InformationSourceVO> queryByComponentData(InformationSourceDTO informationSourceDTO, Integer pageNo, Integer pageSize);
+
     void add(InformationSourceDTO InformationSourceDTO) throws JeecgBootException;
 
     void edit(InformationSourceDTO InformationSourceDTO) throws JeecgBootException;

@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.jeecg.common.exception.JeecgBootException;
 import org.jeecg.common.util.oConvertUtils;
 import org.jeecg.modules.polymerize.dto.InformationSourceDTO;
@@ -14,10 +15,12 @@ import org.jeecg.modules.polymerize.mapper.InformationSourceCategoryMapper;
 import org.jeecg.modules.polymerize.mapper.InformationSourceMapper;
 import org.jeecg.modules.polymerize.service.IInformationSourceService;
 import org.jeecg.modules.polymerize.vo.InformationSourceVO;
+import org.jeecg.modules.system.entity.SysCheckRule;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.Resource;
+import java.util.ArrayList;
 
 /**
  * @Description: 信源管理
@@ -39,6 +42,18 @@ public class InformationSourceServiceImpl extends ServiceImpl<InformationSourceM
     public IPage<InformationSourceVO> queryPageList(InformationSourceDTO informationSourceDTO, Integer pageNo, Integer pageSize) {
         Page<InformationSourceVO> page = new Page<InformationSourceVO>(pageNo, pageSize);
         IPage<InformationSourceVO> list =  informationSourceMapper.selectInformationSource(page, informationSourceDTO);
+        return list;
+    }
+
+    @Override
+    public IPage<InformationSourceVO> queryByComponentData(InformationSourceDTO informationSourceDTO, Integer pageNo, Integer pageSize) {
+        String[] idArray = null;
+        if (oConvertUtils.isNotEmpty(informationSourceDTO.getId())) {
+            // 处理id字符串
+            idArray = informationSourceDTO.getId().split(",");
+        }
+        Page<InformationSourceVO> page = new Page<InformationSourceVO>(pageNo, pageSize);
+        IPage<InformationSourceVO> list =  informationSourceMapper.selectByComponentData(page, informationSourceDTO, idArray);
         return list;
     }
 

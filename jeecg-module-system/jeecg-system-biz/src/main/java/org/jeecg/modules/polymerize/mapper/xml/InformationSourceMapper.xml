@@ -109,4 +109,84 @@
             </otherwise>
         </choose>
     </select>
+
+    <select id="selectByComponentData" resultType="org.jeecg.modules.polymerize.vo.InformationSourceVO">
+        <choose>
+            <when test='informationSourceDTO.categoryId != null and informationSourceDTO.categoryId != ""'>
+                SELECT
+                tmp1.*, GROUP_CONCAT(tmp2.category_id) as category_ids
+                FROM
+                (SELECT
+                pis.*
+                FROM
+                polymerize_information_source AS pis
+                LEFT JOIN polymerize_information_source_category AS pisc
+                ON
+                pis.id = pisc.information_source_id
+                WHERE
+                pisc.category_id = #{informationSourceDTO.categoryId}
+                AND pis.del_flag = 0
+                <if test='informationSourceDTO.id != null and informationSourceDTO.id != ""'>
+                    AND pis.id = #{informationSourceDTO.id}
+                </if>
+                <if test='informationSourceDTO.name != null and informationSourceDTO.name != ""'>
+                    <bind name="bindName" value="'%'+informationSourceDTO.name+'%'"/>
+                    AND pis.name like #{bindName}
+                </if>
+                <if test='informationSourceDTO.domain != null and informationSourceDTO.domain != ""'>
+                    <bind name="bindDomain" value="'%'+informationSourceDTO.domain+'%'"/>
+                    AND pis.domain like #{bindDomain}
+                </if>
+                <if test='informationSourceDTO.scheme != null and informationSourceDTO.scheme != ""'>
+                    AND pis.scheme = #{informationSourceDTO.scheme}
+                </if>
+                <if test='informationSourceDTO.port != null'>
+                    AND pis.port = #{informationSourceDTO.port}
+                </if>
+                )
+                AS tmp1
+                LEFT JOIN
+                (SELECT
+                pisc2.category_id, pisc2.information_source_id
+                FROM
+                polymerize_information_source_category AS pisc2 ) AS tmp2
+                ON tmp1.id = tmp2.information_source_id
+                GROUP BY tmp1.id
+
+            </when>
+            <otherwise>
+                SELECT
+                pis.*, GROUP_CONCAT(pisc.category_id) AS category_ids
+                FROM
+                polymerize_information_source AS pis
+                LEFT JOIN
+                polymerize_information_source_category AS pisc
+                ON pis.id = pisc.information_source_id
+                WHERE pis.del_flag = 0
+                <if test='idArray != null and idArray.length > 0'>
+                    AND pis.id IN
+                    <foreach item="id" collection="idArray"  open="(" separator="," close=")">
+                        #{id}
+                    </foreach>
+                </if>
+                <if test='informationSourceDTO.name != null and informationSourceDTO.name != ""'>
+                    <bind name="bindName" value="'%'+informationSourceDTO.name+'%'"/>
+                    AND pis.name like #{bindName}
+                </if>
+                <if test='informationSourceDTO.domain != null and informationSourceDTO.domain != ""'>
+                    <bind name="bindDomain" value="'%'+informationSourceDTO.domain+'%'"/>
+                    AND pis.domain like #{bindDomain}
+                </if>
+                <if test='informationSourceDTO.scheme != null and informationSourceDTO.scheme != ""'>
+                    AND pis.scheme = #{informationSourceDTO.scheme}
+                </if>
+                <if test='informationSourceDTO.port != null'>
+                    AND pis.port = #{informationSourceDTO.port}
+                </if>
+                GROUP BY pis.id
+                ORDER BY pis.rank DESC, pis.create_time DESC
+            </otherwise>
+        </choose>
+    </select>
+
 </mapper>
