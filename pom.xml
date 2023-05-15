@@ -36,7 +36,7 @@
         <spring-cloud-alibaba.version>2021.0.1.0</spring-cloud-alibaba.version>
 		<alibaba.nacos.version>2.0.4</alibaba.nacos.version>
 
-		<xxl-job-core.version>2.2.0</xxl-job-core.version>
+		<xxl-job-core.version>2.4.0</xxl-job-core.version>
         <fastjson.version>1.2.83</fastjson.version>
 		<pegdown.version>1.6.0</pegdown.version>
 		<knife4j-spring-boot-starter.version>3.0.3</knife4j-spring-boot-starter.version>
@@ -78,6 +78,7 @@
         <module>jeecg-boot-base-core</module>
         <module>jeecg-module-demo</module>
         <module>jeecg-module-system</module>
+		<module>jeecg-module-producer</module>
 	</modules>
 
 	<repositories>
@@ -429,7 +430,7 @@
 				<!--Nacos服务地址-->
                 <config.server-addr>jeecg-boot-nacos:8848</config.server-addr>
 				<!--Nacos配置中心命名空间,用于支持多环境.这里必须使用ID，不能使用名称,默认为空-->
-				<config.namespace></config.namespace>
+				<config.namespace>dev</config.namespace>
 				<!--Nacos配置分组名称-->
 				<config.group>DEFAULT_GROUP</config.group>
             </properties>
