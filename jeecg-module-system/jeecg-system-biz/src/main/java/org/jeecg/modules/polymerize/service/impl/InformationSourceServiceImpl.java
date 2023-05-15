@@ -11,8 +11,11 @@ import org.jeecg.common.util.oConvertUtils;
 import org.jeecg.modules.polymerize.dto.InformationSourceDTO;
 import org.jeecg.modules.polymerize.entity.InformationSource;
 import org.jeecg.modules.polymerize.entity.InformationSourceCategory;
+import org.jeecg.modules.polymerize.entity.InformationSourceRule;
 import org.jeecg.modules.polymerize.mapper.InformationSourceCategoryMapper;
 import org.jeecg.modules.polymerize.mapper.InformationSourceMapper;
+import org.jeecg.modules.polymerize.mapper.InformationSourceRuleMapper;
+import org.jeecg.modules.polymerize.service.IInformationSourceRuleService;
 import org.jeecg.modules.polymerize.service.IInformationSourceService;
 import org.jeecg.modules.polymerize.vo.InformationSourceVO;
 import org.jeecg.modules.system.entity.SysCheckRule;
@@ -37,6 +40,9 @@ public class InformationSourceServiceImpl extends ServiceImpl<InformationSourceM
 
     @Resource
     InformationSourceCategoryMapper informationSourceCategoryMapper;
+
+    @Resource
+    InformationSourceRuleMapper informationSourceRuleMapper;
 
     @Override
     public IPage<InformationSourceVO> queryPageList(InformationSourceDTO informationSourceDTO, Integer pageNo, Integer pageSize) {
@@ -87,6 +93,11 @@ public class InformationSourceServiceImpl extends ServiceImpl<InformationSourceM
         }
         // 2.批量增加 polymerize_information_source_category 表数据
         multipleInsertInformationSourceCategory(informationSourceId, informationSourceDTO.getCategoryIds());
+        // 3.增加 polymerize_information_source_rule 表数据
+        InformationSourceRule informationSourceRule = new InformationSourceRule();
+        informationSourceRule.setInformationSourceId(informationSourceId);
+        informationSourceRule.setDrawflowConfig(InformationSourceRule.DRAWFLOW_DEFAULT_CONFIG);
+        informationSourceRuleMapper.insert(informationSourceRule);
     }
 
     /**
