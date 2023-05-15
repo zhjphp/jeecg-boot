@@ -14,6 +14,11 @@
             <artifactId>jeecg-module-producer-api</artifactId>
             <version>3.5.1</version>
         </dependency>
+        <!-- 引入定时任务依赖 -->
+        <dependency>
+            <groupId>org.jeecgframework.boot</groupId>
+            <artifactId>jeecg-boot-starter-job</artifactId>
+        </dependency>
     </dependencies>
     <build>
         <!-- 打包名称 -->

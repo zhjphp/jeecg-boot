@@ -30,7 +30,7 @@ public class PolymerizeRedisUtil extends RedisUtil {
      * @param value 值
      * @return
      */
-    public boolean lSet(String key, Object value) {
+    public boolean lPush(String key, Object value) {
         try {
             redisTemplate.opsForList().leftPush(key, value);
             return true;
@@ -48,7 +48,7 @@ public class PolymerizeRedisUtil extends RedisUtil {
      * @param time  时间(秒)
      * @return
      */
-    public boolean lSet(String key, Object value, long time) {
+    public boolean lPush(String key, Object value, long time) {
         try {
             redisTemplate.opsForList().leftPush(key, value);
             if (time > 0) {

@@ -117,7 +117,7 @@ public class ProducerByTaskJobHandler {
                     model.setPort(informationSource.getPort());
                     model.setRule(rule.getDrawflowConfig());
                     // 写入队列
-                    if (!polymerizeRedisUtil.lSet(redisKey, model, redisKeyExpire)) {
+                    if (!polymerizeRedisUtil.lPush(redisKey, model, redisKeyExpire)) {
                         throw new Exception("informationSourceId=" + id + ", informationSourceName=" + informationSource.getName() + ", 加入redis [" + redisKey + "]任务队列失败");
                     }
                 }
