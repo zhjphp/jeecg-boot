@@ -136,6 +136,12 @@ public class ProducerByTaskJobHandler {
         }
     }
 
+    /**
+     * 日志打印
+     *
+     * @param msg
+     * @return
+     */
     private void addLog(String msg) {
         log.info(msg);
         XxlJobHelper.log(msg);

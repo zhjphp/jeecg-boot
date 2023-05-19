@@ -252,6 +252,12 @@
 			<groupId>commons-fileupload</groupId>
 			<artifactId>commons-fileupload</artifactId>
 		</dependency>
+		<!-- jGit  -->
+		<dependency>
+			<groupId>org.eclipse.jgit</groupId>
+			<artifactId>org.eclipse.jgit</artifactId>
+			<version>${jGit.version}</version>
+		</dependency>
 	</dependencies>
 
 </project>

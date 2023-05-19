@@ -13,16 +13,21 @@ import org.jeecg.common.base.BaseMap;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.UnknownHostException;
+import java.util.Enumeration;
+
 @Slf4j
 @SpringBootApplication
 @EnableFeignClients(basePackages = {"org.jeecg"})
-public class JeecgProducerCloudApplication implements CommandLineRunner {
+public class JeecgConsumerCloudApplication implements CommandLineRunner {
     @Autowired
     private RedisTemplate<String, Object> redisTemplate;
 
     public static void main(String[] args) throws Exception {
-        // SpringApplication.run(JeecgProducerCloudApplication.class, args);
-        ConfigurableApplicationContext application = SpringApplication.run(JeecgProducerCloudApplication.class, args);
+//        SpringApplication.run(JeecgConsumerCloudApplication.class, args);
+        ConfigurableApplicationContext application = SpringApplication.run(JeecgConsumerCloudApplication.class, args);
         Environment env = application.getEnvironment();
         String ip = oConvertUtils.getRealIp();
         String port = env.getProperty("server.port");
@@ -48,4 +53,5 @@ public class JeecgProducerCloudApplication implements CommandLineRunner {
         //刷新网关
         redisTemplate.convertAndSend(GlobalConstants.REDIS_TOPIC_NAME, params);
     }
+
 }

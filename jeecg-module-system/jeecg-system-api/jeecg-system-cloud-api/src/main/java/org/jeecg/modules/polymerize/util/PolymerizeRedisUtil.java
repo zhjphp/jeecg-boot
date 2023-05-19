@@ -24,7 +24,7 @@ public class PolymerizeRedisUtil extends RedisUtil {
     }
 
     /**
-     * 将list放入缓存
+     * list-leftPush
      *
      * @param key   键
      * @param value 值
@@ -41,7 +41,7 @@ public class PolymerizeRedisUtil extends RedisUtil {
     }
 
     /**
-     * 将list放入缓存
+     * list-leftPush
      *
      * @param key   键
      * @param value 值
@@ -58,6 +58,21 @@ public class PolymerizeRedisUtil extends RedisUtil {
         } catch (Exception e) {
             e.printStackTrace();
             return false;
+        }
+    }
+
+    /**
+     * list-rightPop
+     *
+     * @param key   键
+     * @return
+     */
+    public Object lPop(String key) {
+        try {
+            return redisTemplate.opsForList().rightPop(key);
+        } catch (Exception var5) {
+            var5.printStackTrace();
+            return null;
         }
     }
 

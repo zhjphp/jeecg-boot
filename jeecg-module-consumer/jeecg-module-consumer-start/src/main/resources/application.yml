@@ -1,12 +1,13 @@
 server:
-  port: 7010
+  port: 7011
 spring:
   application:
-    name: jeecg-producer
+    name: jeecg-consumer
   config:
     import:
       - optional:nacos:jeecg.yaml
       - optional:nacos:jeecg-@profile.name@.yaml
+      - optional:nacos:jeecg-consumer.yaml
   cloud:
     nacos:
       config:
