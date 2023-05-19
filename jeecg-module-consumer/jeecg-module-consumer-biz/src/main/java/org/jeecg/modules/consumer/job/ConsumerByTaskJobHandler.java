@@ -65,15 +65,21 @@ public class ConsumerByTaskJobHandler {
         // 当前执行的jobId
         long jobId = XxlJobHelper.getJobId();
         String jobIdStr = String.valueOf(jobId);
-
+        addLog("jobId=" + jobIdStr);
+        // 分片参数
+        int shardIndex = XxlJobHelper.getShardIndex();
+        int shardTotal = XxlJobHelper.getShardTotal();
+        addLog("分片参数：当前分片序号 = " + shardIndex + ", 总分片数 = " + shardTotal);
+        // 任务参数传递生产者任务ID
+        String producerId = XxlJobHelper.getJobParam();
+        if (oConvertUtils.isEmpty(producerId)) {
+            log.error("生产者ID为空");
+            XxlJobHelper.handleFail("生产者ID为空");
+            return;
+        }
+        // redis 任务队列key
+        String redisKey = PolymerizeCacheConstant.INFORMATION_SOURCE_JOB_LIST_PRE + ":" + producerId;
         try {
-            // 任务参数传递生产者任务ID
-            String producerId = XxlJobHelper.getJobParam();
-            if (oConvertUtils.isEmpty(producerId)) {
-                throw new Exception("生产者ID为空");
-            }
-            // redis 任务队列key
-            String redisKey = PolymerizeCacheConstant.INFORMATION_SOURCE_JOB_LIST_PRE + ":" + producerId;
             // 循环从队列中取出信源配置
             addLog("开始从任务队列: " + redisKey + ", 循环取出任务");
             Object jobObject;
@@ -82,18 +88,14 @@ public class ConsumerByTaskJobHandler {
                 // JSON.parseObject(jobStr, InformationSourceJobConfigModel.class);
                 InformationSourceJobConfigModel jobConfig = (InformationSourceJobConfigModel)jobObject;
                 addLog("取出任务jobConfig: " + jobConfig.toString());
-
                 // 获取任务爬虫存储路径
                 addLog("从 " + jobConfig.getRepository() + " 匹配仓库名称");
                 String gitRepositoryName = getGitRepositoryName(jobConfig.getRepository());
-
                 // 代码存储地址为: 基础路径 + 仓库名称 + 版本号
                 String codePath = baseCodePath + gitRepositoryName + File.separator + jobConfig.getVersion();
                 addLog("爬虫存储路径: " + codePath);
-
                 // 从git拉取爬虫代码
                 gitClone(codePath, jobConfig.getRepository());
-
                 // shell脚本命令内容
                 String command = jobConfig.getRunCommand();
                 addLog("爬虫执行命令: " + command);
@@ -104,11 +106,9 @@ public class ConsumerByTaskJobHandler {
                 } else {
                     throw new Exception("执行命令没有预留信源规则配置传入参数");
                 }
-
                 // 封装shell文件
                 addLog("建立shell执行文件");
                 String shellFileFullName = makeShellFile(codePath, command);
-
                 // 执行shell脚本
                 runShell(shellFileFullName, codePath);
             }
@@ -117,6 +117,8 @@ public class ConsumerByTaskJobHandler {
             XxlJobHelper.handleSuccess("job jobId=" + jobId + ", 执行完成");
             return;
         } catch (Exception e) {
+            //  出现异常,删除redis已经写入的任务队列
+            polymerizeRedisUtil.del(redisKey);
             e.printStackTrace();
             log.error(e.getMessage());
             XxlJobHelper.handleFail( e.getMessage());
@@ -195,7 +197,7 @@ public class ConsumerByTaskJobHandler {
             addLog("shell status: " + exitValue);
         } catch (Exception e) {
             e.printStackTrace();
-            throw new Exception(e.getMessage());
+            throw e;
         } finally {
             if (bufferedReader != null) {
                 bufferedReader.close();
@@ -239,7 +241,7 @@ public class ConsumerByTaskJobHandler {
             bw.write(command);
         } catch (Exception e) {
             e.printStackTrace();
-            throw new Exception(e.getMessage());
+            throw e;
         } finally {
             bw.close();
         }
@@ -253,16 +255,11 @@ public class ConsumerByTaskJobHandler {
      * @return
      */
     private String getGitRepositoryName(String gitUrl) throws Exception {
-        try {
-            String regEx = "(.+/)(.+)(\\.git)$";
-            int group = 2;
-            Matcher matcher = Pattern.compile(regEx).matcher(gitUrl);
-            matcher.matches();
-            return matcher.group(group);
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw new Exception("git仓库名称匹配失败, " + e.getMessage());
-        }
+        String regEx = "(.+/)(.+)(\\.git)$";
+        int group = 2;
+        Matcher matcher = Pattern.compile(regEx).matcher(gitUrl);
+        matcher.matches();
+        return matcher.group(group);
     }
 
     /**
