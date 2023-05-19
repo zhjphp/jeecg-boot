@@ -20,6 +20,7 @@ import java.io.*;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -130,7 +131,7 @@ public class ConsumerByTaskJobHandler {
      * @param crawlRepository
      * @return
      */
-    private void gitClone(String codePath, String crawlRepository) throws Exception {
+    private synchronized void gitClone(String codePath, String crawlRepository) throws Exception {
         // 配置git仓库
         UsernamePasswordCredentialsProvider provider = new UsernamePasswordCredentialsProvider(userName, password);
         // 判断爬虫代码是否存在
@@ -142,6 +143,7 @@ public class ConsumerByTaskJobHandler {
         if (folder.list().length == 0) {
             addLog("爬虫代码目录为空目录, 从: " + crawlRepository + " 下载代码");
             Git cloneGit = Git.cloneRepository().setURI(crawlRepository).setDirectory(folder).setCredentialsProvider(provider).call();
+            TimeUnit.SECONDS.sleep(7);
             cloneGit.close();
         } else {
             addLog("爬虫代码已经存在, 不执行下载");
@@ -208,7 +210,7 @@ public class ConsumerByTaskJobHandler {
      * @param command
      * @return
      */
-    private String makeShellFile(String path, String command) throws Exception {
+    private synchronized String makeShellFile(String path, String command) throws Exception {
         String suffix = null;
         BufferedWriter bw = null;
         // 判断操作系统
@@ -227,6 +229,8 @@ public class ConsumerByTaskJobHandler {
         if (!file.exists()) {
             addLog("在目录: " + path + " , 建立shell文件: " + fullName);
             file.createNewFile();
+        } {
+            addLog("在目录: " + path + " , shell文件: " + fullName + " 已存在,不再建立");
         }
         try {
             // 写入shell文件内容
