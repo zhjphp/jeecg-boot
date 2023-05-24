@@ -28,9 +28,9 @@ public class AuthServiceImpl implements IAuthService {
 
     /**
      * 获取临时令牌
-     *
      * 模拟登陆接口，获取模拟 Token
-     * @return
+     *
+     * @return String
      */
     @Override
     public String getTemporaryToken() {

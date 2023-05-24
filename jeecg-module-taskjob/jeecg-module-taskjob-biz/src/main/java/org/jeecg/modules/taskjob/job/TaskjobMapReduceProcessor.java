@@ -23,6 +23,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
+ * 信源任务处理程序
  * 控制台参数示例:
  * {"taskIds": "1656199386577870850,1656199339245150210", "threadCount": 10}
  *
@@ -41,6 +42,13 @@ public class TaskjobMapReduceProcessor implements MapReduceProcessor {
     @Resource
     private IConsumerService consumerService;
 
+    /**
+     * 任务处理程序
+     *
+     * @param taskContext
+     * @return ProcessResult
+     * @throws Exception
+     */
     @Override
     public ProcessResult process(TaskContext taskContext) throws Exception {
         OmsLogger omsLogger = taskContext.getOmsLogger();
@@ -99,6 +107,13 @@ public class TaskjobMapReduceProcessor implements MapReduceProcessor {
         }
     }
 
+    /**
+     * reduce处理程序
+     *
+     * @param taskContext
+     * @param taskResults
+     * @return ProcessResult
+     */
     @Override
     public ProcessResult reduce(TaskContext taskContext, List<TaskResult> taskResults) {
         log.info("================ reduce ================");

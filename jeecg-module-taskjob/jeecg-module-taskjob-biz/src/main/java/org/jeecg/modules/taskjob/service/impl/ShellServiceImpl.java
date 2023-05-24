@@ -13,7 +13,7 @@ import java.nio.charset.StandardCharsets;
 
 /**
  * @version 1.0
- * @description: TODO
+ * @description: ShellService shell脚本相关服务
  * @author: wayne
  * @date 2023/5/23 15:48
  */
@@ -21,7 +21,7 @@ import java.nio.charset.StandardCharsets;
 @Component
 public class ShellServiceImpl implements IShellService {
 
-    // 生成执行爬虫shell脚本的文件名
+    /** 生成执行爬虫shell脚本的文件名 */
     @Value("${taskjob.consumer.shellFileName}")
     private String shellFileName;
 
@@ -30,7 +30,9 @@ public class ShellServiceImpl implements IShellService {
      *
      * @param path
      * @param command
+     * @param omsLogger
      * @return
+     * @throws Exception
      */
     @Override
     public synchronized String makeShellFile(String path, String command, OmsLogger omsLogger) throws Exception {
@@ -79,7 +81,9 @@ public class ShellServiceImpl implements IShellService {
      *
      * @param shellFileFullName
      * @param codePath
+     * @param omsLogger
      * @return
+     * @throws Exception
      */
     @Override
     public void runShell(String shellFileFullName, String codePath, OmsLogger omsLogger) throws Exception {

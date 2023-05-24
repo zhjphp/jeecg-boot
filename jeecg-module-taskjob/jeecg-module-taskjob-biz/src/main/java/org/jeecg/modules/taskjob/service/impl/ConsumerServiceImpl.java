@@ -19,7 +19,7 @@ import java.util.Base64;
 
 /**
  * @version 1.0
- * @description: TODO
+ * @description: ConsumerService 消费者服务,从信源队列中读取任务,并调用爬虫执行任务
  * @author: wayne
  * @date 2023/5/23 14:07
  */
@@ -36,26 +36,13 @@ public class ConsumerServiceImpl implements IConsumerService {
     @Resource
     private IShellService shellService;
 
-    // 爬虫存储目录
     @Value("${taskjob.consumer.crawlBaseCodePath}")
     private String baseCodePath;
-
-    // git仓库用户名
-    @Value("${taskjob.consumer.git.username}")
-    private String username;
-
-    // git仓库密码
-    @Value("${taskjob.consumer.git.password}")
-    private String password;
-
-    // 生成执行爬虫shell脚本的文件名
-    @Value("${taskjob.consumer.shellFileName}")
-    private String shellFileName;
 
     /**
      * 执行命令预留参数位置
      * param1 将会被替换为 job 的 json 配置字符串
-     * */
+     */
     @Value("${taskjob.consumer.command.param1}")
     private String param1;
 
@@ -65,6 +52,15 @@ public class ConsumerServiceImpl implements IConsumerService {
     @Value("${taskjob.redis.informationSourceQueueExpire}")
     private long redisQueueExpire;
 
+    /**
+     * 执行Consumer任务
+     *
+     * @param jobId
+     * @param instanceId
+     * @param omsLogger
+     * @return
+     * @throws Exception
+     */
     @Override
     public void doJob(long jobId, long instanceId, OmsLogger omsLogger) throws Exception {
         // redis信源队列key

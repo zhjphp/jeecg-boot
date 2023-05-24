@@ -9,7 +9,7 @@ import java.io.Serializable;
 
 /**
  * @version 1.0
- * @description: TODO
+ * @description: SubTaskModel 父任务向子任务传递数据
  * @author: wayne
  * @date 2023/5/23 15:02
  */
@@ -20,6 +20,7 @@ import java.io.Serializable;
 public class SubTaskModel implements Serializable{
     private static final long serialVersionUID = 1L;
 
+    /**自定义线程号*/
     private int threadNumber;
 
 }

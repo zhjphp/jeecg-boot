@@ -9,25 +9,22 @@ import org.springframework.stereotype.Component;
 import tech.powerjob.worker.log.OmsLogger;
 
 import java.io.File;
-import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
  * @version 1.0
- * @description: TODO
+ * @description: GitService git仓库相关服务
  * @author: wayne
  * @date 2023/5/23 15:28
  */
 @Slf4j
 @Component
-public class GitService implements IGitService {
+public class GitServiceImpl implements IGitService {
 
-    // git仓库用户名
     @Value("${taskjob.consumer.git.username}")
     private String userName;
 
-    // git仓库密码
     @Value("${taskjob.consumer.git.password}")
     private String password;
 
@@ -36,7 +33,9 @@ public class GitService implements IGitService {
      *
      * @param codePath
      * @param crawlRepository
+     * @param omsLogger
      * @return
+     * @throws Exception
      */
     @Override
     public synchronized void gitClone(String codePath, String crawlRepository, OmsLogger omsLogger) throws Exception {
@@ -64,7 +63,8 @@ public class GitService implements IGitService {
      * 获取git仓库名称
      *
      * @param gitUrl
-     * @return
+     * @return String
+     * @throws Exception
      */
     @Override
     public String getGitRepositoryName(String gitUrl) throws Exception {

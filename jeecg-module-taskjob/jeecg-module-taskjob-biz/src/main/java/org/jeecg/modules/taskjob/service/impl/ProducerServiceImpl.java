@@ -27,7 +27,7 @@ import java.util.List;
 
 /**
  * @version 1.0
- * @description: TODO
+ * @description: ProducerService 生产者服务,数据库读取信源任务,写入信源任务队列
  * @author: wayne
  * @date 2023/5/23 9:57
  */
@@ -50,6 +50,16 @@ public class ProducerServiceImpl implements IProducerService {
     @Value("${taskjob.redis.informationSourceQueueExpire}")
     private long redisQueueExpire;
 
+    /**
+     * 执行Producer任务
+     *
+     * @param jobId
+     * @param taskIds
+     * @param instanceId
+     * @param omsLogger
+     * @return
+     * @throws Exception
+     */
     @Override
     public void doJob(long jobId, String taskIds, long instanceId, OmsLogger omsLogger) throws Exception {
         // redis信源队列key,使用instanceId作为队列唯一标识
