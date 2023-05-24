@@ -1,0 +1,18 @@
+server:
+  port: 7010
+spring:
+  application:
+    name: jeecg-taskjob
+  config:
+    import:
+      - optional:nacos:jeecg.yaml
+      - optional:nacos:jeecg-@profile.name@.yaml
+      - optional:nacos:${spring.application.name}.yaml
+  cloud:
+    nacos:
+      config:
+        server-addr: @config.server-addr@
+        group: @config.group@
+        namespace: @config.namespace@
+      discovery:
+        server-addr: ${spring.cloud.nacos.config.server-addr}

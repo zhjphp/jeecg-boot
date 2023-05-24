@@ -185,6 +185,7 @@ public class PolymerizeCategoryController extends JeecgController<PolymerizeCate
 	@GetMapping(value = "/childList")
 	public Result<IPage<PolymerizeCategory>> queryPageList(PolymerizeCategory polymerizeCategory,HttpServletRequest req) {
 		QueryWrapper<PolymerizeCategory> queryWrapper = QueryGenerator.initQueryWrapper(polymerizeCategory, req.getParameterMap());
+		queryWrapper.orderByDesc("rank");
 		List<PolymerizeCategory> list = polymerizeCategoryService.list(queryWrapper);
 		IPage<PolymerizeCategory> pageList = new Page<>(1, 10, list.size());
         pageList.setRecords(list);

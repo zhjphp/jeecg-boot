@@ -26,6 +26,7 @@
 				</if>
 			</foreach>
 		</if>
+		ORDER BY rank DESC, create_time DESC
 	</select>
 
 </mapper>
