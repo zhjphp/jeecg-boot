@@ -9,11 +9,12 @@ public interface IShellService {
      *
      * @param path
      * @param command
+     * @param fileId
      * @param omsLogger
      * @return
      * @throws Exception
      */
-    String makeShellFile(String path, String command, OmsLogger omsLogger) throws Exception;
+    String makeShellFile(String path, String command, String fileId, OmsLogger omsLogger) throws Exception;
 
     /**
      * 命令行执行 shell 脚本

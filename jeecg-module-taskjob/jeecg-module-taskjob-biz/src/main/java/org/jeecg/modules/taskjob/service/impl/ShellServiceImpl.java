@@ -21,21 +21,22 @@ import java.nio.charset.StandardCharsets;
 @Component
 public class ShellServiceImpl implements IShellService {
 
-    /** 生成执行爬虫shell脚本的文件名 */
-    @Value("${taskjob.consumer.shellFileName}")
-    private String shellFileName;
+    /** 生成执行爬虫shell脚本的文件名前缀 */
+    @Value("${taskjob.consumer.shellFileNamePre}")
+    private String shellFileNamePre;
 
     /**
      * 生成 shell 脚本文件
      *
      * @param path
      * @param command
+     * @param fileId
      * @param omsLogger
      * @return
      * @throws Exception
      */
     @Override
-    public synchronized String makeShellFile(String path, String command, OmsLogger omsLogger) throws Exception {
+    public synchronized String makeShellFile(String path, String command, String fileId, OmsLogger omsLogger) throws Exception {
         String suffix = null;
         BufferedWriter bw = null;
         log.info("判断操作系统:");
@@ -52,7 +53,7 @@ public class ShellServiceImpl implements IShellService {
         } else {
             throw new Exception("不支持的操作系统");
         }
-        String fullName = shellFileName + suffix;
+        String fullName = shellFileNamePre + "_" + fileId + suffix;
         String filePath = path + File.separator + fullName;
         File file = new File(filePath);
         if (!file.exists()) {

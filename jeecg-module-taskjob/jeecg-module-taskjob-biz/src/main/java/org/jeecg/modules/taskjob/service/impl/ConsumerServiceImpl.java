@@ -9,12 +9,14 @@ import org.jeecg.modules.taskjob.service.IGitService;
 import org.jeecg.modules.taskjob.service.IShellService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.util.DigestUtils;
 import tech.powerjob.common.serialize.JsonUtils;
 import tech.powerjob.worker.core.processor.TaskContext;
 import tech.powerjob.worker.log.OmsLogger;
 
 import javax.annotation.Resource;
 import java.io.File;
+import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
 /**
@@ -41,10 +43,24 @@ public class ConsumerServiceImpl implements IConsumerService {
 
     /**
      * 执行命令预留参数位置
-     * param1 将会被替换为 job 的 json 配置字符串
+     * param1 将会被替换为job的json配置字符串
      */
     @Value("${taskjob.consumer.command.param1}")
     private String param1;
+
+    /**
+     * 执行命令预留参数位置
+     * param2 将会被替换为IP地址池的json数组
+     */
+    @Value("${taskjob.consumer.command.param2}")
+    private String param2;
+
+    /**
+     * 执行命令预留参数位置
+     * param3 将会被替换为header池的json数组
+     */
+    @Value("${taskjob.consumer.command.param3}")
+    private String param3;
 
     @Value("${taskjob.redis.informationSourceQueueKeyPre}")
     private String redisQueueKeyPre;
@@ -95,13 +111,23 @@ public class ConsumerServiceImpl implements IConsumerService {
                     command = command.replace(this.param1, Base64.getEncoder().encodeToString(jobStr.getBytes("UTF-8")));
                     log.info("替换占位符: {}", command);
                     omsLogger.info("替换占位符: {}", command);
-                } else {
-                    throw new Exception("爬虫执行命令错误, 没有预留 $param1 占位符");
                 }
+//                if (command.contains(this.param2)) {
+//                    command = command.replace(this.param2, Base64.getEncoder().encodeToString(jobStr.getBytes("UTF-8")));
+//                    log.info("替换占位符: {}", command);
+//                    omsLogger.info("替换占位符: {}", command);
+//                }
+//                if (command.contains(this.param2)) {
+//                    command = command.replace(this.param2, Base64.getEncoder().encodeToString(jobStr.getBytes("UTF-8")));
+//                    log.info("替换占位符: {}", command);
+//                    omsLogger.info("替换占位符: {}", command);
+//                }
                 // 封装shell文件
                 log.info("开始建立shell执行文件");
                 omsLogger.info("开始建立shell执行文件");
-                String shellFileFullName = shellService.makeShellFile(codePath, command, omsLogger);
+                // 文件唯一标识,避免冲突
+                String fileId = jobConfig.getInformationSourceId() + "_" + DigestUtils.md5DigestAsHex(command.getBytes(StandardCharsets.UTF_8));
+                String shellFileFullName = shellService.makeShellFile(codePath, command, fileId, omsLogger);
                 // 执行shell脚本
                 shellService.runShell(shellFileFullName, codePath, omsLogger);
             }
