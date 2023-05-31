@@ -33,6 +33,7 @@ public class InformationSourceTaskVO extends InformationSourceTask {
         this.setSysOrgCode(informationSourceTask.getSysOrgCode());
         this.setName(informationSourceTask.getName());
         this.setCrawlId(informationSourceTask.getCrawlId());
+        this.setTimeout(informationSourceTask.getTimeout());
         this.setContent(informationSourceTask.getContent());
         this.setDelFlag(informationSourceTask.getDelFlag());
     }

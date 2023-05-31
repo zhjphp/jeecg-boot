@@ -75,6 +75,7 @@
 		<!-- jGit -->
 		<jGit.version>6.5.0.202303070854-r</jGit.version>
 		<powerjob.version>4.3.2</powerjob.version>
+		<zt-exec.version>1.121</zt-exec.version>
 	</properties>
 
 	<modules>

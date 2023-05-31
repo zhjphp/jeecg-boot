@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
+import io.swagger.models.auth.In;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.Accessors;
@@ -61,6 +62,10 @@ public class Crawl implements Serializable {
 	@Excel(name = "仓库地址", width = 15)
     @ApiModelProperty(value = "仓库地址")
     private String repository;
+    /**预处理指令*/
+    @Excel(name = "预处理指令", width = 15)
+    @ApiModelProperty(value = "预处理指令")
+    private String preCommand;
 	/**执行指令*/
 	@Excel(name = "执行指令", width = 15)
     @ApiModelProperty(value = "执行指令")

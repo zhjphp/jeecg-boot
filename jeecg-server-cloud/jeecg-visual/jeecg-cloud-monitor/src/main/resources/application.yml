@@ -4,7 +4,7 @@ spring:
   boot:
     admin:
       ui:
-        title: JeecgCloud监控中心
+        title: 服务监控中心
       client:
         instance:
           metadata:

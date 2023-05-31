@@ -14,7 +14,13 @@ import tech.powerjob.worker.core.processor.TaskResult;
 import tech.powerjob.worker.core.processor.sdk.MapReduceProcessor;
 import tech.powerjob.worker.log.OmsLogger;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.InputStreamReader;
+import java.nio.charset.Charset;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -47,16 +53,16 @@ public class MapReduceProcessorDemo implements MapReduceProcessor {
             List<TestSubTask> subTasks = Lists.newLinkedList();
             log.info("subTasks.add");
             subTasks.add(new TestSubTask("name" + 1, 1));
-            subTasks.add(new TestSubTask("name" + 2, 2));
-            subTasks.add(new TestSubTask("name" + 3, 3));
-            subTasks.add(new TestSubTask("name" + 4, 4));
-            subTasks.add(new TestSubTask("name" + 5, 5));
-            subTasks.add(new TestSubTask("name" + 6, 6));
-            subTasks.add(new TestSubTask("name" + 7, 7));
-            subTasks.add(new TestSubTask("name" + 8, 8));
-            subTasks.add(new TestSubTask("name" + 9, 9));
-            subTasks.add(new TestSubTask("name" + 0, 0));
-            for (int x = 0; x < 5;x++) {
+//            subTasks.add(new TestSubTask("name" + 2, 2));
+//            subTasks.add(new TestSubTask("name" + 3, 3));
+//            subTasks.add(new TestSubTask("name" + 4, 4));
+//            subTasks.add(new TestSubTask("name" + 5, 5));
+//            subTasks.add(new TestSubTask("name" + 6, 6));
+//            subTasks.add(new TestSubTask("name" + 7, 7));
+//            subTasks.add(new TestSubTask("name" + 8, 8));
+//            subTasks.add(new TestSubTask("name" + 9, 9));
+//            subTasks.add(new TestSubTask("name" + 0, 0));
+            for (int x = 0; x < 1;x++) {
                 log.info("等待：" + x);
                 Thread.sleep(1000);
             }
@@ -68,16 +74,47 @@ public class MapReduceProcessorDemo implements MapReduceProcessor {
             omsLogger.info("[DemoMRProcessor] map success~");
             return new ProcessResult(true, "MAP_SUCCESS");
         } else {
+            File f = new File("E:\\project\\polymerize\\test\\crawl\\python_test\\1.1");
+            StringBuilder sb = new StringBuilder();
+            sb.append("eyJDcmF3bElkIjoiMTY1NjEzOT");
+            String ppp = new String("");
+            String[] cmdArray = new String[]{"python", "test.py" , ppp};
+            ProcessBuilder processBuilder = new ProcessBuilder(cmdArray);
+            // 环境变量
+            Map<String, String> env = processBuilder.environment();
+            log.info("环境变量：" + env.toString());
+            String path = env.get("Path");
+            log.info("pppppppppppppppp变量：" + path);
 
+
+
+            Process process = processBuilder.directory(f).redirectErrorStream(true).start();
+
+            BufferedInputStream bufferedInputStream = new BufferedInputStream(process.getInputStream());
+            BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(bufferedInputStream, Charset.forName("GBK")));
+            // command log
+            String line;
+            while ((line = bufferedReader.readLine()) != null) {
+                log.info(line);
+                omsLogger.info(line);
+            }
+            int exitValue = process.waitFor();
+            if (exitValue == 0) {
+                // default success
+                log.info("shell执行成功, exitValue: {}", exitValue);
+                omsLogger.info("shell执行成功, exitValue: {}", exitValue);
+            } else {
+                throw new Exception("shell执行失败, exitValue: " + exitValue);
+            }
 
             log.info("==== [start subTask task] ====");
             omsLogger.info("[start subTask task]: {}.", JSON.toJSONString(context.getSubTask()));
             log.info("subTask: {}", JsonUtils.toJSONString(context.getSubTask()));
-            for (int x = 0; x < 5;x++) {
+            for (int x = 0; x < 2;x++) {
                 log.info("等待：" + x);
                 Thread.sleep(1000);
             }
-            y++;
+//            y++;
 //            omsLogger.info("[当前 Y]: {}.", y);
 //            log.info("[当前 Y]: {}.", y);
 //            if (y == 3) {

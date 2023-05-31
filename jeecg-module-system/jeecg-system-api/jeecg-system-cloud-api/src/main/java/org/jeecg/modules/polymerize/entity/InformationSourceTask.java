@@ -57,6 +57,10 @@ public class InformationSourceTask implements Serializable {
 	@Excel(name = "任务名称", width = 15)
     @ApiModelProperty(value = "任务名称")
     private String name;
+    /**超时时间*/
+    @Excel(name = "超时时间", width = 15)
+    @ApiModelProperty(value = "超时时间")
+    private Long timeout;
 	/**爬虫ID*/
 	@Excel(name = "爬虫ID", width = 15)
     @ApiModelProperty(value = "爬虫ID")

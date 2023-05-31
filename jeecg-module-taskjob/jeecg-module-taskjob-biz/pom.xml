@@ -27,6 +27,16 @@
             <artifactId>powerjob-worker-spring-boot-starter</artifactId>
             <version>${powerjob.version}</version>
         </dependency>
+<!--        <dependency>-->
+<!--            <groupId>org.apache.commons</groupId>-->
+<!--            <artifactId>commons-exec</artifactId>-->
+<!--            <version>1.4.0-SNAPSHOT</version>-->
+<!--        </dependency>-->
+        <dependency>
+            <groupId>org.zeroturnaround</groupId>
+            <artifactId>zt-exec</artifactId>
+            <version>${zt-exec.version}</version>
+        </dependency>
     </dependencies>
     <build>
         <!-- 打包名称 -->

@@ -115,10 +115,12 @@ public class ProducerServiceImpl implements IProducerService {
                     model.setJobId(jobId);
                     model.setTaskId(taskId);
                     model.setTaskName(task.getName());
+                    model.setTimeout(task.getTimeout());
                     model.setCrawlId(crawlId);
                     model.setCrawlName(crawl.getName());
                     model.setRepository(crawl.getRepository());
                     model.setRunCommand(crawl.getRunCommand());
+                    model.setPreCommand(crawl.getPreCommand());
                     model.setBranch(crawl.getBranch());
                     model.setVersion(crawl.getVersion());
                     model.setInformationSourceId(id);

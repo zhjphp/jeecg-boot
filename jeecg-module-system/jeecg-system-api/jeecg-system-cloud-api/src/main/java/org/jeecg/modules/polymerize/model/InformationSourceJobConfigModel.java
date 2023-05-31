@@ -31,6 +31,10 @@ public class InformationSourceJobConfigModel {
 
     public String runCommand;
 
+    public String preCommand;
+
+    public Long timeout;
+
     public String branch;
 
     public String version;
