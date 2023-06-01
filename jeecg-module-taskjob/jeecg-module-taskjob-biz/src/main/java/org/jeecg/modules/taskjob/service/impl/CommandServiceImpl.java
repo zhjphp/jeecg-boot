@@ -140,8 +140,8 @@ public class CommandServiceImpl implements ICommandService {
             }
             // 输出日志
             processExecutor.readOutput(true);
-            processExecutor.redirectOutput(new TaskjobLogOutputStream(omsLogger, "GBK"));
-            processExecutor.redirectError(new TaskjobLogErrorStream(omsLogger, "GBK"));
+            processExecutor.redirectOutput(new TaskjobLogOutputStream(omsLogger, outputCharset));
+            processExecutor.redirectError(new TaskjobLogErrorStream(omsLogger, outputCharset));
             // 执行命令
             try {
                 exitValue = processExecutor.destroyOnExit().execute().getExitValue();
