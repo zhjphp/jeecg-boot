@@ -10,8 +10,10 @@ import java.net.URLDecoder;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import org.jeecg.common.api.vo.Result;
+import org.jeecg.common.constant.CacheConstant;
 import org.jeecg.common.system.query.QueryGenerator;
 import org.jeecg.common.util.oConvertUtils;
+import org.jeecg.modules.polymerize.constant.PolymerizeCacheConstant;
 import org.jeecg.modules.polymerize.entity.Proxy;
 import org.jeecg.modules.polymerize.service.IProxyService;
 
@@ -27,6 +29,8 @@ import org.jeecgframework.poi.excel.entity.ImportParams;
 import org.jeecgframework.poi.excel.view.JeecgEntityExcelView;
 import org.jeecg.common.system.base.controller.JeecgController;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.multipart.MultipartHttpServletRequest;
@@ -37,7 +41,7 @@ import io.swagger.annotations.ApiOperation;
 import org.jeecg.common.aspect.annotation.AutoLog;
 import org.apache.shiro.authz.annotation.RequiresPermissions;
 
- /**
+/**
  * @Description: ip代理
  * @Author: jeecg-boot
  * @Date:   2023-06-01
@@ -79,6 +83,7 @@ public class ProxyController extends JeecgController<Proxy, IProxyService> {
 	 * @param proxy
 	 * @return
 	 */
+	@CacheEvict(value=PolymerizeCacheConstant.POLYMERIZE_IP_PROXY_CACHE, allEntries=true)
 	@AutoLog(value = "ip代理-添加")
 	@ApiOperation(value="ip代理-添加", notes="ip代理-添加")
 	@RequiresPermissions("polymerize:proxy:add")
@@ -94,6 +99,7 @@ public class ProxyController extends JeecgController<Proxy, IProxyService> {
 	 * @param proxy
 	 * @return
 	 */
+	@CacheEvict(value=PolymerizeCacheConstant.POLYMERIZE_IP_PROXY_CACHE, allEntries=true)
 	@AutoLog(value = "ip代理-编辑")
 	@ApiOperation(value="ip代理-编辑", notes="ip代理-编辑")
 	@RequiresPermissions("polymerize:proxy:edit")
@@ -109,6 +115,7 @@ public class ProxyController extends JeecgController<Proxy, IProxyService> {
 	 * @param id
 	 * @return
 	 */
+	@CacheEvict(value=PolymerizeCacheConstant.POLYMERIZE_IP_PROXY_CACHE, allEntries=true)
 	@AutoLog(value = "ip代理-通过id删除")
 	@ApiOperation(value="ip代理-通过id删除", notes="ip代理-通过id删除")
 	@RequiresPermissions("polymerize:proxy:delete")
@@ -124,6 +131,7 @@ public class ProxyController extends JeecgController<Proxy, IProxyService> {
 	 * @param ids
 	 * @return
 	 */
+	@CacheEvict(value=PolymerizeCacheConstant.POLYMERIZE_IP_PROXY_CACHE, allEntries=true)
 	@AutoLog(value = "ip代理-批量删除")
 	@ApiOperation(value="ip代理-批量删除", notes="ip代理-批量删除")
 	@RequiresPermissions("polymerize:proxy:deleteBatch")

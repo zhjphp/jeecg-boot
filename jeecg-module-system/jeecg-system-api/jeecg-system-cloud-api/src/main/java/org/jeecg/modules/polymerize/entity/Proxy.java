@@ -32,6 +32,10 @@ import lombok.experimental.Accessors;
 public class Proxy implements Serializable {
     private static final long serialVersionUID = 1L;
 
+    public static int STATUS_ENABLE = 1;
+
+    public static int STATUS_DISABLE = 0;
+
 	/**主键*/
 	@TableId(type = IdType.ASSIGN_ID)
     @ApiModelProperty(value = "主键")
@@ -69,9 +73,9 @@ public class Proxy implements Serializable {
     @ApiModelProperty(value = "接口地址")
     private String apiUrl;
 	/**类全名*/
-	@Excel(name = "类全名", width = 15)
-    @ApiModelProperty(value = "类全名")
-    private String fullClassName;
+	@Excel(name = "bean名称", width = 15)
+    @ApiModelProperty(value = "bean名称")
+    private String beanName;
 	/**启用状态*/
     @Dict(dicCode = "proxy_use_flag")
 	@Excel(name = "启用状态", width = 15)

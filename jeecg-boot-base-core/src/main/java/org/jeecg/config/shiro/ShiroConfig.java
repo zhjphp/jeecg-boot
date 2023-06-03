@@ -142,6 +142,8 @@ public class ShiroConfig {
 
         //性能监控——安全隐患泄露TOEKN（durid连接池也有）
         filterChainDefinitionMap.put("/actuator/**", "anon");
+        // 获取代理IP
+        filterChainDefinitionMap.put("/proxy/**", "anon");
         //测试模块排除
         filterChainDefinitionMap.put("/test/seata/**", "anon");
 

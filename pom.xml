@@ -83,6 +83,7 @@
 		<module>jeecg-module-demo</module>
 		<module>jeecg-module-system</module>
 		<module>jeecg-module-taskjob</module>
+		<module>jeecg-module-proxy</module>
 	</modules>
 
 	<repositories>
