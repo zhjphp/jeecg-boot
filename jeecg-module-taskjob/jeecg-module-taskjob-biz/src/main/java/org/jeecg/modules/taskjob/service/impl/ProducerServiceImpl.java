@@ -50,6 +50,9 @@ public class ProducerServiceImpl implements IProducerService {
     @Value("${taskjob.redis.informationSourceQueueExpire}")
     private long redisQueueExpire;
 
+    @Value("${taskjob.producer.ipProxyApi}")
+    private String ipProxyApi;
+
     /**
      * 执行Producer任务
      *
@@ -129,6 +132,7 @@ public class ProducerServiceImpl implements IProducerService {
                     model.setScheme(informationSource.getScheme());
                     model.setPort(informationSource.getPort());
                     model.setRule(rule.getDrawflowConfig());
+                    model.setIpProxyApi(ipProxyApi);
                     // 写入队列
                     if (!polymerizeRedisUtil.lPush(redisQueueKey, model, redisQueueExpire)) {
                         throw new Exception("informationSourceId=" + id + ", informationSourceName=" + informationSource.getName() + ", 加入redis [" + redisQueueKey + "]任务队列失败");

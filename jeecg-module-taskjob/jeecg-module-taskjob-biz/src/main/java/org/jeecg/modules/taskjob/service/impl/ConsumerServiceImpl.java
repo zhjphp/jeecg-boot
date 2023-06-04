@@ -38,21 +38,17 @@ public class ConsumerServiceImpl implements IConsumerService {
     @Value("${taskjob.consumer.crawlBaseCodePath}")
     private String baseCodePath;
 
-    /**
-     * 执行命令预留参数位置
-     * param1 将会被替换为job的json配置字符串
-     */
-    @Value("${taskjob.consumer.command.paramPre}")
-    private String paramPre;
-
-    @Value("${taskjob.consumer.command.paramCount}")
-    private int paramCount;
-
     @Value("${taskjob.redis.informationSourceQueueKeyPre}")
     private String redisQueueKeyPre;
 
     @Value("${taskjob.redis.informationSourceQueueExpire}")
     private long redisQueueExpire;
+
+    @Value("${taskjob.consumer.command.placeholder.rule}")
+    private String placeholderRule;
+
+    @Value("${taskjob.consumer.command.placeholder.ipProxyApi}")
+    private String placeholderIPProxyApi;
 
     /**
      * 执行Consumer任务
@@ -93,22 +89,13 @@ public class ConsumerServiceImpl implements IConsumerService {
 //                log.info("爬虫执行命令: {}", command);
 //                omsLogger.info("爬虫执行命令: {}", command);
                 // 执行命令中包含预留参数位置将会被替换, 给爬虫传参使用base64编码
-                for (int i = 0; i < paramCount; i++) {
-                    String paramName = paramPre + String.valueOf(i + 1);
-                    // $param1 信源规则
-                    if (command.contains(paramName)) {
-                        command = command.replace(paramName, Base64.getEncoder().encodeToString(jobStr.getBytes("UTF-8")));
-                    }
-                    // $param2 IP地址池
-//                    if (command.contains(paramName)) {
-//                        command = command.replace(paramName, Base64.getEncoder().encodeToString(jobStr.getBytes("UTF-8")));
-//                    }
-                    // $param3 header池
-//                    if (command.contains(paramName)) {
-//                        command = command.replace(paramName, Base64.getEncoder().encodeToString(jobStr.getBytes("UTF-8")));
-//                    }
-//                    log.info("替换占位符: {} 为 {}", paramName, command);
-//                    omsLogger.info("替换占位符: {} 为 {}", paramName, command);
+                // 信源规则
+                if (command.contains(placeholderRule)) {
+                    command = command.replace(placeholderRule, Base64.getEncoder().encodeToString(jobStr.getBytes("UTF-8")));
+                }
+                // IP地址池
+                if (command.contains(placeholderIPProxyApi)) {
+                    command = command.replace(placeholderIPProxyApi, Base64.getEncoder().encodeToString(jobConfig.getIpProxyApi().getBytes("UTF-8")));
                 }
                 if (oConvertUtils.isNotEmpty(jobConfig.getPreCommand())) {
                     // 执行预处理指令

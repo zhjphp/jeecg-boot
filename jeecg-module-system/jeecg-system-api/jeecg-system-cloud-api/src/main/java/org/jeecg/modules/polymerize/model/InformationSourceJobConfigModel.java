@@ -51,4 +51,6 @@ public class InformationSourceJobConfigModel {
 
     public String rule;
 
+    public String ipProxyApi;
+
 }
