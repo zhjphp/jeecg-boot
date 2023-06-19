@@ -32,7 +32,9 @@ public class ZhiMaProxyService implements IIPProxyService {
     private String tunnelApi;
 
     @Resource
-    OkHttpClient okHttpClient;
+    private OkHttpClient okHttpClient;
+
+    private static String scheme = "http";
 
     /**
      * 获取一个IP
@@ -46,9 +48,10 @@ public class ZhiMaProxyService implements IIPProxyService {
         IPProxyVO ipProxyVO = new IPProxyVO();
         JSONArray resultArray = requestExclusiveApi(type, 1);
         JSONObject result = resultArray.getJSONObject(0);
-        ipProxyVO.setIP(result.getString("ip"));
+        ipProxyVO.setIp(result.getString("ip"));
         ipProxyVO.setPort(result.getInteger("port"));
         ipProxyVO.setExpireTime(result.getDate("expire_time"));
+        ipProxyVO.setScheme(scheme);
         return ipProxyVO;
     }
 

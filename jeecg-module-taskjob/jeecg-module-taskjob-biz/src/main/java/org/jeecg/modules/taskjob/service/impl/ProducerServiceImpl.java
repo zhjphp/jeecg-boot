@@ -50,7 +50,7 @@ public class ProducerServiceImpl implements IProducerService {
     @Value("${taskjob.redis.informationSourceQueueExpire}")
     private long redisQueueExpire;
 
-    @Value("${taskjob.producer.ipProxyApi}")
+    @Value("${polymerize.ipProxyApi}")
     private String ipProxyApi;
 
     /**

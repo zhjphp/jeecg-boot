@@ -14,12 +14,15 @@ import java.util.Date;
 public class IPProxyVO {
 
     /**代理地址*/
-    public String IP;
+    public String ip;
 
     /**代理端口*/
     public int port;
 
     /**代理失效时间*/
     public Date expireTime;
+
+    /**访问协议*/
+    public String scheme;
 
 }

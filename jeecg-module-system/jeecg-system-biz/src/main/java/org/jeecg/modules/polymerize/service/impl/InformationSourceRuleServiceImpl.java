@@ -1,10 +1,15 @@
 package org.jeecg.modules.polymerize.service.impl;
 
+import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.jeecg.common.exception.JeecgBootException;
+import org.jeecg.common.util.SpringContextUtils;
 import org.jeecg.common.util.oConvertUtils;
+import org.jeecg.modules.polymerize.drawflow.model.ArticleRuleNode;
+import org.jeecg.modules.polymerize.drawflow.model.ListRuleNode;
 import org.jeecg.modules.polymerize.entity.InformationSourceRule;
 import org.jeecg.modules.polymerize.mapper.InformationSourceRuleMapper;
+import org.jeecg.modules.polymerize.playwright.CheckRulePlaywrightCrawl;
 import org.jeecg.modules.polymerize.service.IInformationSourceRuleService;
 import org.springframework.stereotype.Service;
 
@@ -41,6 +46,20 @@ public class InformationSourceRuleServiceImpl extends ServiceImpl<InformationSou
             log.error("配置规则失败");
             throw new JeecgBootException("配置规则失败");
         }
+    }
+
+    @Override
+    public JSONObject checkListRule(ListRuleNode listRuleNode) throws Exception {
+        CheckRulePlaywrightCrawl checkRulePlaywrightCrawl = SpringContextUtils.getApplicationContext().getBean(CheckRulePlaywrightCrawl.class);
+        JSONObject result = checkRulePlaywrightCrawl.testGetList(listRuleNode);
+        return result;
+    }
+
+    @Override
+    public JSONObject checkArticleRule(ArticleRuleNode articleRuleNode) throws Exception {
+        CheckRulePlaywrightCrawl checkRulePlaywrightCrawl = SpringContextUtils.getApplicationContext().getBean(CheckRulePlaywrightCrawl.class);
+        JSONObject result = checkRulePlaywrightCrawl.testGetArticle(articleRuleNode);
+        return result;
     }
 
 }

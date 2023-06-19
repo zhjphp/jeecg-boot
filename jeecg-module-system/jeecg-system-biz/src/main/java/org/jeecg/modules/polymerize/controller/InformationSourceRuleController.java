@@ -15,6 +15,8 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.jeecg.common.api.vo.Result;
 import org.jeecg.common.system.query.QueryGenerator;
 import org.jeecg.common.util.oConvertUtils;
+import org.jeecg.modules.polymerize.drawflow.model.ArticleRuleNode;
+import org.jeecg.modules.polymerize.drawflow.model.ListRuleNode;
 import org.jeecg.modules.polymerize.entity.InformationSourceRule;
 import org.jeecg.modules.polymerize.service.IInformationSourceRuleService;
 
@@ -54,6 +56,34 @@ public class InformationSourceRuleController extends JeecgController<Information
     @Autowired
     private IInformationSourceRuleService informationSourceRuleService;
 
+    @ApiOperation(value="信源规则-测试列表规则", notes="测试列表规则-checkListRule")
+    @PostMapping("/checkListRule")
+    public Result<JSONObject> checkListRule(@RequestBody String jsonRequest) {
+        log.info("请求内容:, {}", jsonRequest);
+        ListRuleNode listRuleNode = new ListRuleNode(JSON.parseObject(jsonRequest));
+        try {
+            JSONObject result = informationSourceRuleService.checkListRule(listRuleNode);
+            return Result.ok(result);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error(e.getMessage());
+        }
+    }
+
+    @ApiOperation(value="信源规则-测试详情规则", notes="测试详情规则-checkArticleRule")
+    @PostMapping("/checkArticleRule")
+    public Result<JSONObject> checkArticleRule(@RequestBody String jsonRequest) {
+        log.info("请求内容:, {}", jsonRequest);
+        ArticleRuleNode articleRuleNode = new ArticleRuleNode(JSON.parseObject(jsonRequest));
+        try {
+            JSONObject result = informationSourceRuleService.checkArticleRule(articleRuleNode);
+            return Result.ok(result);
+        } catch (Exception e) {
+            log.info("测试详情规则错误: {}, {}", e.getMessage(), e.toString());
+            return Result.error(e.getMessage());
+        }
+    }
+
     /**
      * 配置规则
      *
@@ -61,7 +91,7 @@ public class InformationSourceRuleController extends JeecgController<Information
      * @return
      */
     @ApiOperation(value="信源规则-配置规则", notes="信源规则-configureRule")
-    @PostMapping("configureRule")
+    @PostMapping("/configureRule")
     public Result<String> configureRule(@RequestBody String jsonRequest) {
         log.info(jsonRequest);
         // 过滤数据中的换行符

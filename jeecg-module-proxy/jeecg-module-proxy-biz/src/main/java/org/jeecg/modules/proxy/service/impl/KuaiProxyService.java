@@ -20,7 +20,7 @@ public class KuaiProxyService implements IIPProxyService {
     @Override
     public IPProxyVO getOne(int type) {
         IPProxyVO ipProxyVO = new IPProxyVO();
-        ipProxyVO.setIP("2.2.2.2");
+        ipProxyVO.setIp("2.2.2.2");
         ipProxyVO.setPort(2222);
         ipProxyVO.setExpireTime(new Date());
         return ipProxyVO;
