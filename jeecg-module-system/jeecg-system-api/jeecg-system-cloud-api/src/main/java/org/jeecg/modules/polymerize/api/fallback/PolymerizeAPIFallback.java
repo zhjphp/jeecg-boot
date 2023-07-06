@@ -3,10 +3,9 @@ package org.jeecg.modules.polymerize.api.fallback;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.jeecg.modules.polymerize.api.IPolymerizeAPI;
-import org.jeecg.modules.polymerize.entity.Crawl;
-import org.jeecg.modules.polymerize.entity.InformationSource;
-import org.jeecg.modules.polymerize.entity.InformationSourceRule;
-import org.jeecg.modules.polymerize.entity.InformationSourceTask;
+import org.jeecg.modules.polymerize.entity.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 
 /**
@@ -48,6 +47,12 @@ public class PolymerizeAPIFallback implements IPolymerizeAPI {
     public InformationSourceRule queryRuleByInformationSourceId(@RequestParam("id") String id) {
         log.error("queryRuleByInformationSourceId 请求失败");
         return null;
+    }
+
+    @Override
+    public boolean addTmpCrawlData(@RequestBody TmpCrawlData tmpCrawlData) {
+        log.error("addTmpCrawlData 请求失败");
+        return false;
     }
 
 }

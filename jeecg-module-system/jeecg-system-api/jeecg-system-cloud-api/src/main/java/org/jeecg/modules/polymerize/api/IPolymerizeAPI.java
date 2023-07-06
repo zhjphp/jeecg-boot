@@ -2,14 +2,12 @@ package org.jeecg.modules.polymerize.api;
 
 import org.jeecg.common.constant.ServiceNameConstants;
 import org.jeecg.modules.polymerize.api.factory.PolymerizeAPIFallbackFactory;
-import org.jeecg.modules.polymerize.entity.Crawl;
-import org.jeecg.modules.polymerize.entity.InformationSource;
-import org.jeecg.modules.polymerize.entity.InformationSourceRule;
-import org.jeecg.modules.polymerize.entity.InformationSourceTask;
+import org.jeecg.modules.polymerize.entity.*;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 
 
@@ -31,5 +29,8 @@ public interface IPolymerizeAPI {
 
     @GetMapping("/polymerize/api/queryRuleByInformationSourceId")
     InformationSourceRule queryRuleByInformationSourceId(@RequestParam("id") String id);
+
+    @PostMapping("/polymerize/api/addTmpCrawlData")
+    boolean addTmpCrawlData(@RequestBody TmpCrawlData tmpCrawlData);
 
 }

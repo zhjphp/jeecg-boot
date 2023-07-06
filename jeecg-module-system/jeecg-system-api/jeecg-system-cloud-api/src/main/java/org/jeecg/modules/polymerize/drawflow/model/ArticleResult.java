@@ -2,6 +2,8 @@ package org.jeecg.modules.polymerize.drawflow.model;
 
 import lombok.Data;
 
+import java.util.Date;
+
 /**
  * @version 1.0
  * @description: 稿件详情采集结果
@@ -10,6 +12,15 @@ import lombok.Data;
  */
 @Data
 public class ArticleResult {
+
+    /**信源ID*/
+    public String informationSourceId;
+
+    /**信源任务ID*/
+    public String taskId;
+
+    /**调度任务ID*/
+    public String jobId;
 
     /**稿件url*/
     public String url;

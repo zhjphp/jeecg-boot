@@ -23,10 +23,15 @@ public class ListRuleNode {
         effectiveDays = obj.getInteger("effectiveDays");
         startTime = obj.getDate("startTime");
         endTime = obj.getDate("endTime");
+        waterfallFlag = obj.getBoolean("waterfallFlag");
+        waterfallPageCount = obj.getInteger("waterfallPageCount");
+        waterfallBottomMatch = obj.getString("waterfallBottomMatch");
         startUrls = obj.getString("startUrls");
         pageMatch = obj.getString("pageMatch");
+        pageDepth = obj.getInteger("pageDepth");
         totalPageMatch = obj.getString("totalPageMatch");
         nextMatch = obj.getString("nextMatch");
+        enableOutside = obj.getBoolean("enableOutside");
         articleUrlMatch = obj.getString("articleUrlMatch");
         articleTitleMatch = obj.getString("articleTitleMatch");
         articleDateMatch = obj.getString("articleDateMatch");
@@ -45,6 +50,15 @@ public class ListRuleNode {
     /**终止时间*/
     public Date endTime;
 
+    /**是否为瀑布流*/
+    public Boolean waterfallFlag;
+
+    /**瀑布流下拉屏数*/
+    public Integer waterfallPageCount;
+
+    /**瀑布流底部标识匹配*/
+    public String waterfallBottomMatch;
+
     /**起始url列表,多个用","隔开*/
     public String startUrls;
 
@@ -57,8 +71,14 @@ public class ListRuleNode {
 //    /**上一页匹配*/
 //    public String preMatch;
 
+    /**翻页深度*/
+    public Integer pageDepth;
+
     /**下一页匹配*/
     public String nextMatch;
+
+    /**是否爬取外链*/
+    public Boolean enableOutside;
 
     /**稿件url匹配*/
     public String articleUrlMatch;

@@ -11,6 +11,7 @@ import io.swagger.models.auth.In;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.Accessors;
+import org.jeecg.common.aspect.annotation.Dict;
 import org.jeecgframework.poi.excel.annotation.Excel;
 import org.springframework.format.annotation.DateTimeFormat;
 
@@ -30,6 +31,15 @@ import java.util.Date;
 @ApiModel(value="crawl对象", description="爬虫表")
 public class Crawl implements Serializable {
     private static final long serialVersionUID = 1L;
+
+    /**java-playwright内置爬虫*/
+    public static final Integer JAVA_PLAYWRIGHT_INTERNAL = 1;
+
+    /**python-独立爬虫*/
+    public static final Integer PYTHON_ALONE = 2;
+
+    /**php-独立爬虫*/
+    public static final Integer PHP_ALONE = 3;
 
 	/**主键*/
 	@TableId(type = IdType.ASSIGN_ID)
@@ -58,6 +68,11 @@ public class Crawl implements Serializable {
 	@Excel(name = "名称", width = 15)
     @ApiModelProperty(value = "名称")
     private String name;
+    /**爬虫类型(1:java-playwright内置爬虫,2:python-独立爬虫,3:php-独立爬虫)*/
+    @Dict(dicCode = "crawl_type")
+    @Excel(name = "爬虫类型(1:java-playwright内置爬虫,2:python-独立爬虫,3:php-独立爬虫)", width = 15)
+    @ApiModelProperty(value = "爬虫类型(1:java-playwright内置爬虫,2:python-独立爬虫,3:php-独立爬虫)")
+    private Integer type;
 	/**仓库地址*/
 	@Excel(name = "仓库地址", width = 15)
     @ApiModelProperty(value = "仓库地址")

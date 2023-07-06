@@ -1,7 +1,13 @@
 import com.alibaba.fastjson.JSON;
+import com.microsoft.playwright.*;
+import com.microsoft.playwright.options.LoadState;
 import lombok.extern.slf4j.Slf4j;
 import org.jeecg.modules.polymerize.drawflow.model.ListRuleNode;
 import org.jeecg.modules.polymerize.playwright.CheckRulePlaywrightCrawl;
+
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * @version 1.0
@@ -32,27 +38,58 @@ public class PlaywrightTest {
 
         // playwrightCrawl.run(config);
 
-        CheckRulePlaywrightCrawl testRulePlaywrightCrawl = new CheckRulePlaywrightCrawl();
-        String listRuleConfig = "{\n" +
-                "  \"checkRuleUrl\": \"http://sd.dzwww.com/sdnews/\",\n" +
-                "  \"startUrls\": \"http://sd.dzwww.com/sdnews/\",\n" +
-                "  \"effectiveDays\": 0,\n" +
-                "  \"startTime\": \"2023-06-17 16:29:27\",\n" +
-                "  \"endTime\": \"2023-06-18 23:29:40\",\n" +
-                "  \"pageMatch\": \"//div[@id=\\\"main2\\\"]//ul//li//div[@class=\\\"text\\\"]\",\n" +
-                "  \"totalPageMatch\": \"//*[@id=\\\"flip\\\"]/a[5]\",\n" +
-                "  \"nextMatch\": \"//a[contains(text(),\\\"下一页\\\")]\",\n" +
-                "  \"articleUrlMatch\": \"//h3/a\",\n" +
-                "  \"articleTitleMatch\": \"//h3/a\",\n" +
-                "  \"articleDateMatch\": \"//p/label\"\n" +
-                "}";
-        ListRuleNode listRuleNode = new ListRuleNode(JSON.parseObject(listRuleConfig));
+//        CheckRulePlaywrightCrawl testRulePlaywrightCrawl = new CheckRulePlaywrightCrawl();
+//        String listRuleConfig = "{\n" +
+//                "  \"checkRuleUrl\": \"http://sd.dzwww.com/sdnews/\",\n" +
+//                "  \"startUrls\": \"http://sd.dzwww.com/sdnews/\",\n" +
+//                "  \"effectiveDays\": 0,\n" +
+//                "  \"startTime\": \"2023-06-17 16:29:27\",\n" +
+//                "  \"endTime\": \"2023-06-18 23:29:40\",\n" +
+//                "  \"pageMatch\": \"//div[@id=\\\"main2\\\"]//ul//li//div[@class=\\\"text\\\"]\",\n" +
+//                "  \"totalPageMatch\": \"//*[@id=\\\"flip\\\"]/a[5]\",\n" +
+//                "  \"nextMatch\": \"//a[contains(text(),\\\"下一页\\\")]\",\n" +
+//                "  \"articleUrlMatch\": \"//h3/a\",\n" +
+//                "  \"articleTitleMatch\": \"//h3/a\",\n" +
+//                "  \"articleDateMatch\": \"//p/label\"\n" +
+//                "}";
+//        ListRuleNode listRuleNode = new ListRuleNode(JSON.parseObject(listRuleConfig));
+//
+//        try {
+//            testRulePlaywrightCrawl.testGetList(listRuleNode);
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//        }
 
-        try {
-            testRulePlaywrightCrawl.testGetList(listRuleNode);
-        } catch (Exception e) {
-            e.printStackTrace();
+
+        Playwright playwright = Playwright.create();
+        Browser firefox = playwright.firefox().launch(
+                new BrowserType.LaunchOptions().setHeadless(false).setDevtools(true)
+        );
+        String url = "http://www.wfcmw.cn/weifang/text/2023-05-23/1675703643.html";
+
+        String userAgent = "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.130 Safari/537.36";
+        Browser.NewContextOptions newContextOptions = new Browser.NewContextOptions().setJavaScriptEnabled(true);
+        BrowserContext chromiumContext = firefox.newContext(newContextOptions);
+
+        Page page = chromiumContext.newPage();
+        page.navigate(url, new Page.NavigateOptions().setTimeout(120 * 1000));
+
+        String c = page.content();
+        log.info(c);
+        Matcher m = Pattern.compile("[.\\s\\S]*来源：([\\u4e00-\\u9fa5]*)</span>").matcher(c);
+        int count = m.groupCount();
+        log.info("count: {}", count);
+        if (m.find()) {
+            log.info("1: {}", m.group(1));
         }
+
+//        List<Locator> ll = page.locator("//div[@class='news_left left']//li//a").all();
+//        for (Locator l : ll) {
+//            String y = l.getAttribute("href");
+//            log.info("yyyyy: {}", y);
+//            String x = l.textContent();
+//            log.info(x);
+//        }
 
 
 

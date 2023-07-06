@@ -15,7 +15,8 @@ public class ArticleRuleNode {
     public ArticleRuleNode(JSONObject obj) {
         checkRuleUrl = obj.getString("checkRuleUrl");
         singleFlag = obj.getBoolean("singleFlag");
-        urlMatch = obj.getString("urlMatch");
+        singleUrl = obj.getString("singleUrl");
+        moreButtonMatch = obj.getString("moreButtonMatch");
         titleMatch = obj.getString("titleMatch");
         subtitleMatch = obj.getString("subtitleMatch");
         keywordsMatch = obj.getString("keywordsMatch");
@@ -37,8 +38,11 @@ public class ArticleRuleNode {
     /**是否单页采集*/
     public Boolean singleFlag;
 
-    /**稿件url匹配*/
-    public String urlMatch;
+    /**单页采集url*/
+    public String singleUrl;
+
+    /**查看更多按钮*/
+    public String moreButtonMatch;
 
     /**稿件标题匹配*/
     public String titleMatch;

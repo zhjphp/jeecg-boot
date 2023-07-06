@@ -27,6 +27,8 @@ public class InformationSourceJobConfigModel {
 
     public String CrawlName;
 
+    public Integer CrawlType;
+
     public String repository;
 
     public String runCommand;

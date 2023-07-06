@@ -17,7 +17,7 @@ public class ListResult {
     String title;
 
     /**稿件日期*/
-    Date date;
+    String date;
 
     /**稿件url*/
     String url;
