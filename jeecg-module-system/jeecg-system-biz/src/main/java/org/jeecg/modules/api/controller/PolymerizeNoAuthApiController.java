@@ -9,10 +9,7 @@ import org.jeecg.modules.polymerize.dto.TmpCrawlDataDTO;
 import org.jeecg.modules.polymerize.entity.TmpCrawlData;
 import org.jeecg.modules.polymerize.service.ITmpCrawlDataService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
 
@@ -32,7 +29,7 @@ public class PolymerizeNoAuthApiController {
     private ITmpCrawlDataService tmpCrawlDataService;
 
     @ApiOperation(value="爬虫临时数据存储-接口数据", notes="爬虫临时数据存储-接口数据")
-    @GetMapping(value = "/queryTmpCrawlData")
+    @PostMapping(value = "/queryTmpCrawlData")
     public Result<IPage<TmpCrawlData>> queryTmpCrawlData(TmpCrawlDataDTO tmpCrawlDataDTO,
                                                          @RequestParam(name="pageNo", defaultValue="1") Integer pageNo,
                                                          @RequestParam(name="pageSize", defaultValue="10") Integer pageSize,
