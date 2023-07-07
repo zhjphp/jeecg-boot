@@ -13,8 +13,17 @@ import java.util.Date;
 @Data
 public class ArticleResult {
 
+    /**信源名称*/
+    public String informationSourceName;
+
+    /**信源域名*/
+    public String informationSourceDomain;
+
     /**信源ID*/
     public String informationSourceId;
+
+    /**自定义标签*/
+    public String customTags;
 
     /**信源任务ID*/
     public String taskId;
@@ -24,6 +33,9 @@ public class ArticleResult {
 
     /**稿件url*/
     public String url;
+
+    /**稿件专题*/
+    public String topic;
 
     /**稿件标题*/
     public String title;

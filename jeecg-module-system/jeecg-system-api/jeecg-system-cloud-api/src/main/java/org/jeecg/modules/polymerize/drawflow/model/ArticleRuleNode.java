@@ -14,9 +14,11 @@ public class ArticleRuleNode {
 
     public ArticleRuleNode(JSONObject obj) {
         checkRuleUrl = obj.getString("checkRuleUrl");
+        customTags = obj.getString("customTags");
         singleFlag = obj.getBoolean("singleFlag");
         singleUrl = obj.getString("singleUrl");
         moreButtonMatch = obj.getString("moreButtonMatch");
+        topicMatch = obj.getString("topicMatch");
         titleMatch = obj.getString("titleMatch");
         subtitleMatch = obj.getString("subtitleMatch");
         keywordsMatch = obj.getString("keywordsMatch");
@@ -30,10 +32,14 @@ public class ArticleRuleNode {
         commentMatch = obj.getString("commentMatch");
         collectMatch = obj.getString("collectMatch");
         customConfig = obj.getString("customConfig");
+
     }
 
     /**测试规则url*/
     public String checkRuleUrl;
+
+    /**自定义标签*/
+    public String customTags;
 
     /**是否单页采集*/
     public Boolean singleFlag;
@@ -43,6 +49,9 @@ public class ArticleRuleNode {
 
     /**查看更多按钮*/
     public String moreButtonMatch;
+
+    /**栏目匹配*/
+    public String topicMatch;
 
     /**稿件标题匹配*/
     public String titleMatch;

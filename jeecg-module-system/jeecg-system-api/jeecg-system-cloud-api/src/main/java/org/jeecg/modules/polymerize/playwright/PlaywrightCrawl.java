@@ -50,6 +50,8 @@ import java.util.stream.Collectors;
  * 4. 一个列表,多种详情页面,多套详情规则 (完成)
  * 5. 杀死任务时可以释放资源 (析构方法)
  * 6. 可以通过job控制台杀死任务 (通过对playwright的TimeoutError与net::ERR_NAME_NOT_RESOLVED错误类型判断,进行选择性抛出与重试)
+ * 7. job系统的日志对接
+ * 8. 优化列表起始链接的显示
  */
 @Slf4j
 @Component
@@ -137,15 +139,21 @@ public class PlaywrightCrawl {
 
     private String jobId;
 
+    private String informationSourceName;
+
+    private String informationSourceDomain;
+
     /**
      * 执行爬取任务
      */
-    public void run(String jsonConfig, String informationSourceId, String taskId, String jobId) throws Exception {
+    public void run(String jsonConfig, String informationSourceId, String taskId, String jobId, String informationSourceDomain, String informationSourceName) throws Exception {
         // 执行爬虫
         try {
             this.informationSourceId = informationSourceId;
             this.taskId = taskId;
             this.jobId = jobId;
+            this.informationSourceDomain = informationSourceDomain;
+            this.informationSourceName = informationSourceName;
             // 全局配置
             initPlaywright();
             createBrowser();
@@ -759,6 +767,7 @@ public class PlaywrightCrawl {
         while( changeRule && (currentNodeIndex < articleRuleNodeList.size()) ) {
             try {
                 ArticleRuleNode articleRuleNode = articleRuleNodeList.get(currentNodeIndex);
+                articleResult.setCustomTags(articleRuleNode.getCustomTags());
                 // 超时重试一次
                 int tries = 0;
                 while (tries < retryTimes) {
@@ -813,6 +822,7 @@ public class PlaywrightCrawl {
                             articleResult.setContent(String.join("", contentList));
                         }
                         // 处理除详情外自他字段
+                        articleResult.setTopic(articlePageLocator(articleRuleNode.getTopicMatch()));
                         articleResult.setTitle(articlePageLocator(articleRuleNode.getTitleMatch()));
                         articleResult.setSubtitle(articlePageLocator(articleRuleNode.getSubtitleMatch()));
                         articleResult.setDate(articlePageLocator(articleRuleNode.getDateMatch()));
@@ -874,6 +884,10 @@ public class PlaywrightCrawl {
         return articleResult;
     }
 
+    /**
+     * 稿件数据处理
+     * @param articleResult
+     */
     public void articleDataProcess(ArticleResult articleResult) throws Exception {
         log.info("准备处理数据:");
         // 依次处理稿件数据
@@ -896,6 +910,13 @@ public class PlaywrightCrawl {
         }
     }
 
+    /**
+     * 列表错误数据处理
+     * @param url
+     * @param title
+     * @param date
+     * @param reason
+     */
     public void listErrorDataProcess(String url, String title, String date, String reason) throws Exception {
         log.info("准备处理列表错误数据:");
 
@@ -918,6 +939,10 @@ public class PlaywrightCrawl {
         }
     }
 
+    /**
+     * 稿件错误数据处理
+     * @param articleResult
+     */
     public void articleErrorDataProcess(ArticleResult articleResult) throws Exception {
         log.info("准备处理稿件错误数据:");
         // 依次处理稿件数据

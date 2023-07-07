@@ -1,5 +1,7 @@
 package org.jeecg.modules.polymerize.service;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import org.jeecg.modules.polymerize.dto.TmpCrawlDataDTO;
 import org.jeecg.modules.polymerize.entity.TmpCrawlData;
 import com.baomidou.mybatisplus.extension.service.IService;
 
@@ -10,6 +12,8 @@ import com.baomidou.mybatisplus.extension.service.IService;
  * @Version: V1.0
  */
 public interface ITmpCrawlDataService extends IService<TmpCrawlData> {
+
+    IPage<TmpCrawlData> queryTmpCrawlData(TmpCrawlDataDTO tmpCrawlDataDTO, Integer pageNo, Integer pageSize);
 
     boolean addTmpCrawlData(TmpCrawlData tmpCrawlData);
 

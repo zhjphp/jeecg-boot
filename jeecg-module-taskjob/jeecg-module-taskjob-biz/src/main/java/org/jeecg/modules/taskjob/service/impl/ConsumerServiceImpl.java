@@ -82,7 +82,14 @@ public class ConsumerServiceImpl implements IConsumerService {
                 if (jobConfig.getCrawlType() == Crawl.JAVA_PLAYWRIGHT_INTERNAL) {
                     // java内置爬虫直接执行内置类逻辑
                     PlaywrightCrawl playwrightCrawl = SpringContextUtils.getApplicationContext().getBean(PlaywrightCrawl.class);
-                    playwrightCrawl.run(jobConfig.getRule(), jobConfig.getInformationSourceId(), jobConfig.getTaskId(), String.valueOf(jobConfig.getJobId()));
+                    playwrightCrawl.run(
+                            jobConfig.getRule(),
+                            jobConfig.getInformationSourceId(),
+                            jobConfig.getTaskId(),
+                            String.valueOf(jobConfig.getJobId()),
+                            jobConfig.getDomain(),
+                            jobConfig.getInformationSourceName()
+                            );
                 } else if (jobConfig.getCrawlType() == Crawl.PYTHON_ALONE || jobConfig.getCrawlType() == Crawl.PHP_ALONE) {
                     // 其他独立爬虫,通过下载仓库代码后,命令行调用执行
                     // 获取任务爬虫存储路径

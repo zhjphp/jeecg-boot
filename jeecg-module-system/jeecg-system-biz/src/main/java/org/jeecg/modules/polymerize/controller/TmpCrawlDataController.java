@@ -12,6 +12,7 @@ import javax.servlet.http.HttpServletResponse;
 import org.jeecg.common.api.vo.Result;
 import org.jeecg.common.system.query.QueryGenerator;
 import org.jeecg.common.util.oConvertUtils;
+import org.jeecg.modules.polymerize.dto.TmpCrawlDataDTO;
 import org.jeecg.modules.polymerize.entity.TmpCrawlData;
 import org.jeecg.modules.polymerize.service.ITmpCrawlDataService;
 

@@ -1,17 +1,25 @@
 package org.jeecg.modules.polymerize.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.extern.slf4j.Slf4j;
+import org.jeecg.common.util.oConvertUtils;
+import org.jeecg.modules.polymerize.dto.TmpCrawlDataDTO;
 import org.jeecg.modules.polymerize.entity.PolymerizeCategory;
 import org.jeecg.modules.polymerize.entity.TmpCrawlData;
 import org.jeecg.modules.polymerize.mapper.TmpCrawlDataMapper;
 import org.jeecg.modules.polymerize.service.ITmpCrawlDataService;
+import org.jeecg.modules.polymerize.vo.InformationSourceVO;
 import org.springframework.stereotype.Service;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 
 import javax.annotation.Resource;
 import java.sql.SQLException;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * @Description: 爬虫临时数据存储
@@ -25,6 +33,25 @@ public class TmpCrawlDataServiceImpl extends ServiceImpl<TmpCrawlDataMapper, Tmp
 
     @Resource
     TmpCrawlDataMapper tmpCrawlDataMapper;
+
+    public IPage<TmpCrawlData> queryTmpCrawlData(TmpCrawlDataDTO tmpCrawlDataDTO, Integer pageNo, Integer pageSize) {
+        Page<TmpCrawlData> page = new Page<TmpCrawlData>(pageNo, pageSize);
+        List<String> customTagList = null;
+        if (oConvertUtils.isNotEmpty(tmpCrawlDataDTO.getCustomTags())) {
+            customTagList = Arrays.stream(tmpCrawlDataDTO.getCustomTags().split(",")).collect(Collectors.toList());
+        }
+        IPage<TmpCrawlData> pageList = tmpCrawlDataMapper.queryTmpCrawlData(
+                page,
+                tmpCrawlDataDTO.getInformationSourceName(),
+                tmpCrawlDataDTO.getInformationSourceDomain(),
+                tmpCrawlDataDTO.getTopic(),
+                customTagList,
+                tmpCrawlDataDTO.getInformationsourceid(),
+                tmpCrawlDataDTO.getTaskid(),
+                tmpCrawlDataDTO.getErrorCode()
+        );
+        return pageList;
+    }
 
     @Override
     public boolean addTmpCrawlData(TmpCrawlData tmpCrawlData) {
