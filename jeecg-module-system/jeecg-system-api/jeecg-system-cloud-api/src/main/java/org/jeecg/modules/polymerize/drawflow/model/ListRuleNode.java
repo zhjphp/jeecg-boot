@@ -23,6 +23,7 @@ public class ListRuleNode {
         effectiveDays = obj.getInteger("effectiveDays");
         startTime = obj.getDate("startTime");
         endTime = obj.getDate("endTime");
+        moreMatch = obj.getString("moreMatch");
         waterfallFlag = obj.getBoolean("waterfallFlag");
         waterfallPageCount = obj.getInteger("waterfallPageCount");
         waterfallBottomMatch = obj.getString("waterfallBottomMatch");
@@ -49,6 +50,9 @@ public class ListRuleNode {
 
     /**终止时间*/
     public Date endTime;
+
+    /**查看更多按钮*/
+    public String moreMatch;
 
     /**是否为瀑布流*/
     public Boolean waterfallFlag;

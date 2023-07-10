@@ -56,8 +56,8 @@ public class TmpCrawlData implements Serializable {
         informationsourceid = articleResult.getInformationSourceId();
         taskid = articleResult.getTaskId();
         jobid = articleResult.getJobId();
-        informationSourceName = articleResult.getInformationSourceName();
-        informationSourceDomain = articleResult.getInformationSourceDomain();
+        informationsourceName = articleResult.getInformationSourceName();
+        informationsourceDomain = articleResult.getInformationSourceDomain();
         customTags = articleResult.getCustomTags();
         topic = articleResult.getTopic();
     }
@@ -162,11 +162,11 @@ public class TmpCrawlData implements Serializable {
     /**信源名称*/
     @Excel(name = "信源名称", width = 15)
     @ApiModelProperty(value = "信源名称")
-    private String informationSourceName;
+    private String informationsourceName;
     /**信源域名*/
     @Excel(name = "信源域名", width = 15)
     @ApiModelProperty(value = "信源域名")
-    private String informationSourceDomain;
+    private String informationsourceDomain;
     /**自定义标签*/
     @Excel(name = "自定义标签", width = 15)
     @ApiModelProperty(value = "自定义标签")

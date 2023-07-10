@@ -24,6 +24,7 @@ import javax.annotation.Resource;
 import java.lang.reflect.Field;
 import java.net.URI;
 import java.net.URL;
+import java.sql.Time;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.regex.Matcher;
@@ -218,13 +219,13 @@ public class CheckRulePlaywrightCrawl {
         }
     }
 
-    private void waterfallScrollToBottom(Page page, int pageCount, String bottomMatch) {
+    private void waterfallScrollToBottom(Page page, Integer pageCount, String bottomMatch, String pageMatch, String moreMatch) {
         Object scrollHeight = page.evaluate(
                 "() => document.documentElement.scrollHeight"
         );
         log.info("document.documentElement.scrollHeight: {}", scrollHeight.toString());
         double y = Double.parseDouble(scrollHeight.toString());
-        log.info("开始执行瀑布流下拉");
+        log.info("开始执行瀑布流下拉: {}", y);
         // 如果配置了底部特征
         if (oConvertUtils.isNotEmpty(bottomMatch)) {
             log.info("使用类底匹配规则");
@@ -233,22 +234,57 @@ public class CheckRulePlaywrightCrawl {
                 page.waitForLoadState(LoadState.DOMCONTENTLOADED);
                 try {
                     // 如果出现底部标识,则不在滚动
-                    if (oConvertUtils.isNotEmpty(listPage.locator(bottomMatch).innerHTML(innerHTMLOptions))) {
+                    if (oConvertUtils.isNotEmpty(page.locator(bottomMatch).innerHTML(innerHTMLOptions))) {
                         break;
                     }
                 } catch (TimeoutError e) {
                     // 暂时不做处理
                 }
             }
-        } else {
+        } else if (oConvertUtils.isNotEmpty(pageCount) && pageCount > 0) {
+            // 是否定义总下拉屏数
             log.info("使用下拉屏数: {}", pageCount);
             // 如果没有配置底部特征
             for (int i = 0 ; i < pageCount; i ++) {
                 page.mouse().wheel(0, 500);
                 page.waitForLoadState(LoadState.DOMCONTENTLOADED);
                 log.info("屏数: {}", i);
-                listPage.waitForTimeout(sleepTime);
+                page.waitForTimeout(200);
             }
+        } else {
+            // 判断区块数量是否有变化
+            log.info("使用自动判断是否到底");
+            int preCount = 0;
+            int totalCount = 0;
+            int tmpCount = 0;
+            // 保险,防止无线循环
+            int insure = 1000000;
+            do {
+                if (oConvertUtils.isNotEmpty(moreMatch)) {
+                    try {
+                        Locator moreLocator = listPage.locator(moreMatch);
+                        log.info("检查是否存在查看更多按钮: {}", moreLocator.count());
+                        if ( moreLocator.count() == 1) {
+                            log.info("点击查看更多按钮");
+                            moreLocator.click();
+                            listPage.waitForLoadState(LoadState.DOMCONTENTLOADED);
+                            listPage.waitForTimeout(500);
+                        }
+                    } catch (TimeoutError e) {
+                        // 捕获不存在元素的错误
+                        log.info("找不到查看更多按钮");
+                    }
+                }
+                for (int i = 0; i < 3; i++) {
+                    page.mouse().wheel(0, y);
+                    page.waitForLoadState(LoadState.DOMCONTENTLOADED);
+                    page.waitForTimeout(2000);
+                }
+                preCount = totalCount;
+                totalCount = page.locator(pageMatch).all().size();
+                log.info("totalCount: {}", totalCount);
+                log.info("preCount: {}", preCount);
+            } while ( (totalCount > preCount) && (insure > 0) );
         }
     }
 
@@ -431,7 +467,9 @@ public class CheckRulePlaywrightCrawl {
                 if (listRuleNode.getWaterfallFlag()) {
                     log.info("当前页面为瀑布流页面");
                     // 瀑布流
-                    waterfallScrollToBottom(listPage, listRuleNode.getWaterfallPageCount(), listRuleNode.getWaterfallBottomMatch());
+                    waterfallScrollToBottom(
+                            listPage, listRuleNode.getWaterfallPageCount(), listRuleNode.getWaterfallBottomMatch(), listRuleNode.getPageMatch(), listRuleNode.getMoreMatch()
+                    );
                 } else {
                     log.info("当前页面为常规页面");
                     scrollToBottom(listPage, scrollCount);

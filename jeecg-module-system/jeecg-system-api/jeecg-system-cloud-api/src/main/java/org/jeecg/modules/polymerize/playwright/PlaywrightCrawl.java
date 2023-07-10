@@ -413,7 +413,7 @@ public class PlaywrightCrawl {
      * @param pageCount
      * @param bottomMatch
      */
-    private void waterfallScrollToBottom(Page page, int pageCount, String bottomMatch) {
+    private void waterfallScrollToBottom(Page page, int pageCount, String bottomMatch, String pageMatch, String moreMatch) {
         Object scrollHeight = page.evaluate(
                 "() => document.documentElement.scrollHeight"
         );
@@ -422,7 +422,7 @@ public class PlaywrightCrawl {
         log.info("开始执行瀑布流下拉");
         // 如果配置了底部特征
         if (oConvertUtils.isNotEmpty(bottomMatch)) {
-            log.info("使用类底匹配规则");
+            log.info("使用底部元素匹配规则");
             for (int i = 0 ; i < 1000000; i ++) {
                 page.mouse().wheel(0, y);
                 page.waitForLoadState(LoadState.DOMCONTENTLOADED);
@@ -435,7 +435,8 @@ public class PlaywrightCrawl {
                     // 暂时不做处理
                 }
             }
-        } else {
+        } else if (oConvertUtils.isNotEmpty(pageCount) && pageCount > 0) {
+            // 是否定义总下拉屏数
             log.info("使用下拉屏数: {}", pageCount);
             // 如果没有配置底部特征
             for (int i = 0 ; i < pageCount; i ++) {
@@ -443,6 +444,38 @@ public class PlaywrightCrawl {
                 page.waitForLoadState(LoadState.DOMCONTENTLOADED);
                 log.info("屏数: {}", i);
                 listPage.waitForTimeout(200);
+            }
+        } else {
+            // 判断区块数量是否有变化
+            log.info("使用自动判断是否到底");
+            int preCount = 0;
+            int totalCount = listPage.locator(pageMatch).all().size();
+            // 保险,防止无线循环
+            int insure = 50;
+            while ( (totalCount > preCount) && (insure > 0) ) {
+                // 点击查看更多按钮
+                log.info("moreMatch: {}", moreMatch);
+                if (oConvertUtils.isNotEmpty(moreMatch)) {
+                    try {
+                        Locator moreLocator = listPage.locator(moreMatch);
+                        log.info("检查是否存在查看更多按钮: {}", moreLocator.count());
+                        if ( moreLocator.count() == 1) {
+                            log.info("点击查看更多按钮");
+                            moreLocator.click();
+                            listPage.waitForLoadState(LoadState.DOMCONTENTLOADED);
+                            listPage.waitForTimeout(500);
+                        }
+                    } catch (TimeoutError e) {
+                        // 捕获不存在元素的错误
+                        log.info("找不到查看更多按钮");
+                    }
+                }
+                page.mouse().wheel(0, y);
+                page.waitForLoadState(LoadState.DOMCONTENTLOADED);
+                int tmpCount = listPage.locator(pageMatch).all().size();
+                preCount = totalCount;
+                totalCount += tmpCount;
+                insure--;
             }
         }
     }
@@ -525,7 +558,9 @@ public class PlaywrightCrawl {
             int scrollCount = listPageScrollPageCount;
             if (listRuleNode.getWaterfallFlag()) {
                 // 瀑布流
-                waterfallScrollToBottom(listPage, listRuleNode.getWaterfallPageCount(), listRuleNode.getWaterfallBottomMatch());
+                waterfallScrollToBottom(
+                        listPage, listRuleNode.getWaterfallPageCount(), listRuleNode.getWaterfallBottomMatch(), listRuleNode.getPageMatch(), listRuleNode.getMoreMatch()
+                );
             } else {
                 scrollToBottom(listPage, scrollCount);
             }
