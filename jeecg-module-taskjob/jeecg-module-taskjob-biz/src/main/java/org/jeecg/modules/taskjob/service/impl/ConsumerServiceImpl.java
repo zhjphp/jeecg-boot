@@ -88,7 +88,8 @@ public class ConsumerServiceImpl implements IConsumerService {
                             jobConfig.getTaskId(),
                             String.valueOf(jobConfig.getJobId()),
                             jobConfig.getDomain(),
-                            jobConfig.getInformationSourceName()
+                            jobConfig.getInformationSourceName(),
+                            omsLogger
                             );
                 } else if (jobConfig.getCrawlType() == Crawl.PYTHON_ALONE || jobConfig.getCrawlType() == Crawl.PHP_ALONE) {
                     // 其他独立爬虫,通过下载仓库代码后,命令行调用执行

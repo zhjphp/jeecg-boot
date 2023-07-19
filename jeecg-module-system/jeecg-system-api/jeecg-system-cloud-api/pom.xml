@@ -28,5 +28,10 @@
             <artifactId>jsoup</artifactId>
             <version>1.16.1</version>
         </dependency>
+        <dependency>
+            <groupId>tech.powerjob</groupId>
+            <artifactId>powerjob-worker-spring-boot-starter</artifactId>
+            <version>${powerjob.version}</version>
+        </dependency>
     </dependencies>
 </project>
