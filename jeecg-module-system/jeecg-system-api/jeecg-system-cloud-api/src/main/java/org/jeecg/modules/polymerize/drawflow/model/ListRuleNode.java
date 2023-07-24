@@ -32,6 +32,8 @@ public class ListRuleNode {
         pageDepth = obj.getInteger("pageDepth");
         totalPageMatch = obj.getString("totalPageMatch");
         nextMatch = obj.getString("nextMatch");
+        totalCountMatch = obj.getString("totalCountMatch");
+        pageCount = obj.getInteger("pageCount");
         enableOutside = obj.getBoolean("enableOutside");
         articleUrlMatch = obj.getString("articleUrlMatch");
         articleTitleMatch = obj.getString("articleTitleMatch");
@@ -80,6 +82,12 @@ public class ListRuleNode {
 
     /**下一页匹配*/
     public String nextMatch;
+
+    /**稿件总数匹配*/
+    public String totalCountMatch;
+
+    /**单页数量配置*/
+    public Integer pageCount;
 
     /**是否爬取外链*/
     public Boolean enableOutside;

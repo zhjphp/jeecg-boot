@@ -44,8 +44,8 @@ public class CheckRulePlaywrightCrawl {
 
     private Playwright playwright;
 
-    @Value("${polymerize.playwright.enableHeadless}")
-    private boolean enableHeadless;
+    // @Value("${polymerize.playwright.enableHeadless}")
+    private boolean enableHeadless = false;
 
     @Value("${polymerize.playwright.browserType}")
     private String browserType;
@@ -181,7 +181,8 @@ public class CheckRulePlaywrightCrawl {
         }
         browserContext = browser.newContext(newContextOptions);
         // 屏蔽部分资源的加载
-        browserContext.route(disableLoadResource, route -> route.abort());
+        // browserContext.route(disableLoadResource, route -> route.abort());
+        browserContext.route(Pattern.compile(disableLoadResource), route -> route.abort());
         // 列表页
         listPage = browserContext.newPage();
         // 隐藏webdriver特征
@@ -438,8 +439,42 @@ public class CheckRulePlaywrightCrawl {
                 log.info("指定分页深度: {}", totalPage);
             } else if (oConvertUtils.isNotEmpty(listRuleNode.getTotalPageMatch())) {
                 // 其次判断总页数匹配
-                totalPage = Integer.parseInt(listPageLocator(listRuleNode.getTotalPageMatch(), null));
+                try {
+                    String tmpTotalPage = listPageLocator(listRuleNode.getTotalPageMatch(), null);
+                    totalPage = Integer.parseInt(tmpTotalPage);
+                } catch (TimeoutError e) {
+                    log.warn("没有匹配到总页数,默认只有一页");
+                }
                 log.info("指定总页数匹配: {}", totalPage);
+            } else if (oConvertUtils.isNotEmpty(listRuleNode.getTotalCountMatch())) {
+                log.info("使用总稿件数量匹配");
+                // 判断是否配置总稿件数量匹配
+                Integer totalCount = Integer.parseInt(listPageLocator(listRuleNode.getTotalCountMatch(), null));
+                log.info("使用总稿件数量为: {}", totalCount);
+                if (totalCount != null && totalCount > 0) {
+                    // 查看是否指定每页稿件数量
+                    if ( oConvertUtils.isNotEmpty(listRuleNode.getPageCount()) && listRuleNode.getPageCount() > 0 ) {
+                        int pageCount = listRuleNode.getPageCount();
+                        totalPage = totalCount/pageCount;
+                        if (totalCount%pageCount > 0) {
+                            totalPage+=1;
+                        }
+                        log.info("指定每页稿件数量: {}", pageCount);
+                    } else {
+                        // 如果没有指定每页数量,则需要判断每页的稿件数量
+                        List<Locator> locators = listPage.locator(listRuleNode.getPageMatch()).all();
+                        int pageCount = locators.size();
+                        if (pageCount > 0) {
+                            totalPage = totalCount/pageCount;
+                            if (totalCount%pageCount > 0) {
+                                totalPage+=1;
+                            }
+                            log.info("自动判断每页稿件数量: {}", pageCount);
+                        } else {
+                            log.warn("自动获取每页稿件数量异常, pageCount: {}", pageCount);
+                        }
+                    }
+                }
             }
             log.info("总页数：{}", totalPage);
             show.put("totalPage", totalPage);
@@ -513,6 +548,8 @@ public class CheckRulePlaywrightCrawl {
                             log.info("取内层定位配置, articleUrl: {}", articleUrl);
                         }
                     }
+                    // 过滤获取到的URL
+                    articleUrl = oConvertUtils.replaceBlank(articleUrl);
                     // 判断取出的url是绝对地址还是相对地址
                     if (oConvertUtils.isNotEmpty(articleUrl)) {
                         // 如果是相对地址,把相对地址转换为绝对地址
@@ -710,6 +747,7 @@ public class CheckRulePlaywrightCrawl {
                         ).collect(Collectors.toList());
                         articleResult.setContent(String.join("", contentList));
                     }
+                    articleResult.setTopic(articlePageLocator(articleRuleNode.getTopicMatch()));
                     articleResult.setTitle(articlePageLocator(articleRuleNode.getTitleMatch()));
                     articleResult.setSubtitle(articlePageLocator(articleRuleNode.getSubtitleMatch()));
                     articleResult.setDate(articlePageLocator(articleRuleNode.getDateMatch()));

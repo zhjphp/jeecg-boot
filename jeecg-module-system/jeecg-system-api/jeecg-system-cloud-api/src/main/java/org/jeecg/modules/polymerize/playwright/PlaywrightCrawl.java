@@ -45,14 +45,17 @@ import java.util.stream.Collectors;
  * @author: wayne
  * @date 2023/6/8 17:52
  * TODO
- * 1. 如果找不到总页数, 如何才能到最后一页 (暂时通过指定总页数解决)
+ * 1. 如果找不到总页数, 如何才能到最后一页 (暂时通过指定总页数解决) （增加总稿件数量与每页数量共同计算的方法）
  * 2. xpath与regex联合使用
  * 3. 配置所有xpath的locator超时时间,默认时间为30秒,有点长 (完成)
  * 4. 一个列表,多种详情页面,多套详情规则 (完成)
- * 5. 杀死任务时可以释放资源 (析构方法)
- * 6. 可以通过job控制台杀死任务 (通过对playwright的TimeoutError与net::ERR_NAME_NOT_RESOLVED错误类型判断,进行选择性抛出与重试)
- * 7. job系统的日志对接
+ * 5. 杀死任务时可以释放资源 (析构方法)(完成)
+ * 6. 可以通过job控制台杀死任务 (通过对playwright的TimeoutError与net::ERR_NAME_NOT_RESOLVED错误类型判断,进行选择性抛出与重试) （完成）
+ * 7. job系统的日志对接 （完成）
  * 8. 优化列表起始链接的显示
+ * 9. 每个采集的字段都要在处理前做过滤与非空判断
+ * 10. 重试恢复原有页面时，使用参数传递，不能通过page.url()获取原有链接
+ * 11. 自定义locator.attribute提取属性
  */
 @Slf4j
 @Component
@@ -173,7 +176,7 @@ public class PlaywrightCrawl {
             // 初始化规则配置
             drawflow = new Drawflow(jsonConfig);
             log.info("初始化规则配置: {}", drawflow.toString());
-            omsLogger.info("初始化规则配置: {}", drawflow.toString());
+            omsLogger.info(logThreadId() + "初始化规则配置: {}", drawflow.toString());
             // 初始化定位器超时时间
             textContentOptions = new Locator.TextContentOptions().setTimeout(locatorTimeout);
             innerHTMLOptions = new Locator.InnerHTMLOptions().setTimeout(locatorTimeout);
@@ -196,25 +199,25 @@ public class PlaywrightCrawl {
         } finally {
             if (oConvertUtils.isNotEmpty(listPage)) {
                 log.info("关闭 listPage");
-                omsLogger.info("关闭 listPage");
+                omsLogger.info(logThreadId() + "关闭 listPage");
                 listPage.close();
             }
             if (oConvertUtils.isNotEmpty(articlePage)) {
                 log.info("关闭 articlePage");
-                omsLogger.info("关闭 articlePage");
+                omsLogger.info(logThreadId() + "关闭 articlePage");
                 articlePage.close();
             }
             if (oConvertUtils.isNotEmpty(browserContext)) {
                 log.info("关闭 browserContext");
-                omsLogger.info("关闭 browserContext");
+                omsLogger.info(logThreadId() + "关闭 browserContext");
                 browserContext.close();
             }
             browser.close();
             log.info("关闭 browser");
-            omsLogger.info("关闭 browser");
+            omsLogger.info(logThreadId() + "关闭 browser");
             playwright.close();
             log.info("关闭 playwright");
-            omsLogger.info("关闭 playwright");
+            omsLogger.info(logThreadId() + "关闭 playwright");
         }
     }
 
@@ -271,6 +274,8 @@ public class PlaywrightCrawl {
      * @throws Exception
      */
     public void createPage() throws Exception {
+        log.info("执行createPage()");
+        omsLogger.info(logThreadId() + "执行createPage()");
         // 已经打开的页面
         String currentListPageUrl = null;
         String currentArticlePageUrl = null;
@@ -278,14 +283,14 @@ public class PlaywrightCrawl {
         // 配置ua
         String userAgent = getUserAgent();
         log.info("使用userAgent: {}", userAgent);
-        omsLogger.info("使用userAgent: {}", userAgent);
+        omsLogger.info(logThreadId() + "使用userAgent: {}", userAgent);
         newContextOptions.setUserAgent(userAgent);
         // 配置代理ip
         if (enableIPProxy) {
             String proxyIP = getProxyIP();
             if (oConvertUtils.isNotEmpty(proxyIP)) {
                 log.info("使用代理IP: {}", proxyIP);
-                omsLogger.info("使用代理IP: {}", proxyIP);
+                omsLogger.info(logThreadId() + "使用代理IP: {}", proxyIP);
                 newContextOptions.setProxy(proxyIP);
             }
         }
@@ -293,17 +298,24 @@ public class PlaywrightCrawl {
         if (oConvertUtils.isNotEmpty(listPage)) {
             currentListPageUrl = listPage.url();
             listPage.close();
+            log.info("关闭原有listPage: {}", currentListPageUrl);
+            omsLogger.info(logThreadId() + "关闭原有listPage: {}", currentListPageUrl);
         }
         if (oConvertUtils.isNotEmpty(articlePage)) {
             currentArticlePageUrl = articlePage.url();
             articlePage.close();
+            log.info("关闭原有articlePage: {}", currentArticlePageUrl);
+            omsLogger.info(logThreadId() + "关闭原有articlePage: {}", currentArticlePageUrl);
         }
         if (oConvertUtils.isNotEmpty(browserContext)) {
             browserContext.close();
+            log.info("关闭原有browserContext");
+            omsLogger.info(logThreadId() + "关闭原有browserContext");
         }
         browserContext = browser.newContext(newContextOptions);
         // 屏蔽部分资源的加载
-        browserContext.route(disableLoadResource, route -> route.abort());
+        // browserContext.route(disableLoadResource, route -> route.abort());
+        browserContext.route(Pattern.compile(disableLoadResource), route -> route.abort());
         // 列表页
         listPage = browserContext.newPage();
         // 隐藏webdriver特征
@@ -311,6 +323,9 @@ public class PlaywrightCrawl {
         // 恢复原有页面
         if (oConvertUtils.isNotEmpty(currentListPageUrl)) {
             listPage.navigate(currentListPageUrl, navigateOptions);
+            listPage.waitForLoadState(LoadState.DOMCONTENTLOADED);
+            log.info("恢复原有listPage: {}", currentListPageUrl);
+            omsLogger.info(logThreadId() + "恢复原有listPage: {}", currentListPageUrl);
         }
         // 详情页
         articlePage = browserContext.newPage();
@@ -319,6 +334,9 @@ public class PlaywrightCrawl {
         // 恢复原有页面
         if (oConvertUtils.isNotEmpty(currentArticlePageUrl)) {
             articlePage.navigate(currentArticlePageUrl, navigateOptions);
+            articlePage.waitForLoadState(LoadState.DOMCONTENTLOADED);
+            log.info("恢复原有articlePage: {}", currentArticlePageUrl);
+            omsLogger.info(logThreadId() + "恢复原有articlePage: {}", currentArticlePageUrl);
         }
     }
 
@@ -352,13 +370,13 @@ public class PlaywrightCrawl {
         // 列表节点
         if (node.getNodeType().equals(DrawflowNode.LIST_RULE_NODE)) {
             log.info("执行列表节点: {}", node.toString());
-            omsLogger.info("执行列表节点: {}", node.toString());
+            omsLogger.info(logThreadId() + "执行列表节点: {}", node.toString());
             listNodeProcess(node);
         }
         // 稿件节点
         if (node.getNodeType().equals(DrawflowNode.ARTICLE_RULE_NODE)) {
             log.info("执行稿件节点: {}", node.toString());
-            omsLogger.info("执行稿件节点: {}", node.toString());
+            omsLogger.info(logThreadId() + "执行稿件节点: {}", node.toString());
             articleNodeProcess(node);
         }
     }
@@ -402,7 +420,7 @@ public class PlaywrightCrawl {
                     // 打开页面
                     Response response = listPage.navigate(startUrl, navigateOptions);
                     log.info("开始采集列表页: {}", startUrl);
-                    omsLogger.info("开始采集列表页: {}", startUrl);
+                    omsLogger.info(logThreadId() + "开始采集列表页: {}", startUrl);
                     if (!checkResponse(response)) {
                         throw new TimeoutError(startUrl + "请求失败,response.status: " + response.status());
                     }
@@ -411,16 +429,16 @@ public class PlaywrightCrawl {
                     break;
                 } catch (PlaywrightException e) {
                     log.error(listPage.url() + ": " + e.getMessage());
-                    omsLogger.error(listPage.url() + ": " + e.getMessage());
+                    omsLogger.error(logThreadId() + listPage.url() + ": " + e.getMessage());
                     if (e.getClass().getName().equals("com.microsoft.playwright.TimeoutError") || e.getMessage().contains("net::ERR_NAME_NOT_RESOLVED") || e.getMessage().contains("net::ERR_CONNECTION_TIMED_OUT")) {
                         tries++;
                         if (tries == retryTimes) {
                             log.error("{},尝试请求 {} 次失败", listPage.url(), tries);
-                            omsLogger.error("{},尝试请求 {} 次失败", listPage.url(), tries);
+                            omsLogger.error(logThreadId() + "{},尝试请求 {} 次失败", listPage.url(), tries);
                             throw e;
                         }
                         log.info("更换代理IP和UA,尝试重新请求: {}", listPage.url());
-                        omsLogger.error("更换代理IP和UA,尝试重新请求: {}", listPage.url());
+                        omsLogger.error(logThreadId() + "更换代理IP和UA,尝试重新请求: {}", listPage.url());
                         // 更换代理IP和UA
                         createPage();
                     } else {
@@ -519,7 +537,7 @@ public class PlaywrightCrawl {
                     } catch (TimeoutError e) {
                         // 捕获不存在元素的错误
                         log.warn("找不到查看更多按钮");
-                        omsLogger.warn("找不到查看更多按钮");
+                        omsLogger.warn(logThreadId() + "找不到查看更多按钮");
                     }
                 }
                 page.mouse().wheel(0, y);
@@ -565,7 +583,7 @@ public class PlaywrightCrawl {
                 }
             } else {
                 // 其他不支持
-                throw new Exception("不支持的定位器");
+                throw new RuntimeException("不支持的定位器");
             }
         }
         return result;
@@ -587,10 +605,46 @@ public class PlaywrightCrawl {
             log.info("指定分页深度: {}", totalPage);
         } else if (oConvertUtils.isNotEmpty(listRuleNode.getTotalPageMatch())) {
             // 其次判断总页数匹配
-            totalPage = Integer.parseInt(listPageLocator(listRuleNode.getTotalPageMatch(), null));
+            try {
+                String tmpTotalPage = listPageLocator(listRuleNode.getTotalPageMatch(), null);
+                totalPage = Integer.parseInt(tmpTotalPage);
+            } catch (TimeoutError e) {
+                log.warn("没有匹配到总页数,默认只有一页");
+                omsLogger.warn("没有匹配到总页数,默认只有一页");
+            }
             log.info("指定总页数匹配: {}", totalPage);
+        } else if (oConvertUtils.isNotEmpty(listRuleNode.getTotalCountMatch())) {
+            log.info("使用总稿件数量匹配");
+            // 判断是否配置总稿件数量匹配
+            Integer totalCount = Integer.parseInt(listPageLocator(listRuleNode.getTotalCountMatch(), null));
+            log.info("使用总稿件数量为: {}", totalCount);
+            if (totalCount != null && totalCount > 0) {
+                // 查看是否指定每页稿件数量
+                if ( oConvertUtils.isNotEmpty(listRuleNode.getPageCount()) && listRuleNode.getPageCount() > 0 ) {
+                    int pageCount = listRuleNode.getPageCount();
+                    totalPage = totalCount/pageCount;
+                    if (totalCount%pageCount > 0) {
+                        totalPage+=1;
+                    }
+                    log.info("指定每页稿件数量: {}", pageCount);
+                } else {
+                    // 如果没有指定每页数量,则需要判断每页的稿件数量
+                    List<Locator> locators = listPage.locator(listRuleNode.getPageMatch()).all();
+                    int pageCount = locators.size();
+                    if (pageCount > 0) {
+                        totalPage = totalCount/pageCount;
+                        if (totalCount%pageCount > 0) {
+                            totalPage+=1;
+                        }
+                        log.info("自动判断每页稿件数量: {}", pageCount);
+                    } else {
+                        log.warn("自动获取每页稿件数量异常, pageCount: {}", pageCount);
+                    }
+                }
+            }
         }
         log.info("总页数：{}", totalPage);
+        omsLogger.info(logThreadId() + "总页数：{}", totalPage);
         // 是否翻页
         boolean isPageDown = true;
         // 当前页码
@@ -637,7 +691,7 @@ public class PlaywrightCrawl {
                         listResult.setDate(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(cutDate));
                     } catch (RuntimeException e) {
                         log.warn("格式化时间错误: {}", dateStr);
-                        omsLogger.warn("格式化时间错误: {}", dateStr);
+                        omsLogger.warn(logThreadId() + "格式化时间错误: {}", dateStr);
                         listResult.setDate(null);
                     }
                 } else {
@@ -660,6 +714,8 @@ public class PlaywrightCrawl {
                         log.info("取定位内层href属性, articleUrl: {}", articleUrl);
                     }
                 }
+                // 过滤获取到的URL
+                articleUrl = oConvertUtils.replaceBlank(articleUrl);
                 // 判断取出的url是绝对地址还是相对地址
                 if (oConvertUtils.isNotEmpty(articleUrl)) {
                     // 如果是相对地址,把相对地址转换为绝对地址
@@ -674,7 +730,7 @@ public class PlaywrightCrawl {
                 if ( oConvertUtils.isEmpty(articleUrl)) {
                     // 如果没有取到文章链接则不处理
                     log.warn("无法获取稿件url");
-                    omsLogger.warn("无法获取稿件url");
+                    omsLogger.warn(logThreadId() + "无法获取稿件url");
                     listErrorDataProcess(listResult.getUrl(), listResult.getTitle(), listResult.getDate(), "无法获取稿件url");
                 } else if ( !URLUtils.isSameDomainName(articleUrl, listPage.url()) && !listRuleNode.getEnableOutside() ) {
                     log.info("当前条目为外链内容,不进行采集: {}", listResult.toString());
@@ -767,7 +823,7 @@ public class PlaywrightCrawl {
                     }
                 } else {
                     log.warn("无法定位下一页按钮,列表执行结束,停止翻页: {}", listPage.url());
-                    omsLogger.warn("无法定位下一页按钮,列表执行结束,停止翻页", listPage.url());
+                    omsLogger.warn(logThreadId() + "无法定位下一页按钮,列表执行结束,停止翻页", listPage.url());
                     break;
                 }
                 // Thread.sleep(sleepTime);
@@ -791,7 +847,7 @@ public class PlaywrightCrawl {
         if (articleRuleNode.getSingleFlag()) {
             try {
                 log.info("当前为单页采集节点");
-                omsLogger.info("当前为单页采集节点");
+                omsLogger.info(logThreadId() + "当前为单页采集节点");
                 List<ArticleRuleNode> articleRuleNodeList = new ArrayList<>();
                 articleRuleNodeList.add(articleRuleNode);
                 getArticle(articleRuleNode.getSingleUrl(), articleRuleNodeList);
@@ -801,7 +857,7 @@ public class PlaywrightCrawl {
         } else {
             // 非单页采集无法独立执行
             log.warn("无法独立执行非单页规则稿件采集");
-            omsLogger.warn("无法独立执行非单页规则稿件采集");
+            omsLogger.warn(logThreadId() + "无法独立执行非单页规则稿件采集");
         }
     }
 
@@ -867,7 +923,7 @@ public class PlaywrightCrawl {
                 while (tries < retryTimes) {
                     try {
                         log.info("开始采集稿件: {}, 节点规则: {}", articleUrl, articleRuleNode.toString());
-                        omsLogger.info("开始采集稿件: {}", articleUrl);
+                        omsLogger.info(logThreadId() + "开始采集稿件: {}", articleUrl);
                         // 打开页面
                         Response response = articlePage.navigate(articleUrl, navigateOptions);
                         articlePage.waitForLoadState(LoadState.DOMCONTENTLOADED);
@@ -931,7 +987,7 @@ public class PlaywrightCrawl {
 
                         // log.info("稿件内容采集完成: \nurl: {} \ntitle: {} \narticleResult: {}", articleResult.getUrl(), articleResult.getTitle(), articleResult.toString());
                         log.info("稿件内容采集完成: \nurl: {} \ntitle: {} ", articleResult.getUrl(), articleResult.getTitle());
-                        omsLogger.info("稿件内容采集完成: \nurl: {} \ntitle: {} ", articleResult.getUrl(), articleResult.getTitle());
+                        omsLogger.info(logThreadId() + "稿件内容采集完成: \nurl: {} \ntitle: {} ", articleResult.getUrl(), articleResult.getTitle());
                         // 将数据推入存储处理队列
                         articleDataProcess(articleResult);
                         articlePage.waitForTimeout(sleepTime);
@@ -941,15 +997,16 @@ public class PlaywrightCrawl {
                         // 如果捕获PlaywrightException的全部错误,则无法通过job控制台杀死任务,通过对playwright的TimeoutError与net::ERR_NAME_NOT_RESOLVED错误类型判断,进行选择性抛出与重试
                         if (e.getClass().getName().equals("com.microsoft.playwright.TimeoutError") || e.getMessage().contains("net::ERR_NAME_NOT_RESOLVED") || e.getMessage().contains("net::ERR_CONNECTION_TIMED_OUT")) {
                             log.error("{} : {}", articleUrl, e.getMessage());
-                            omsLogger.error("{} : {}", articleUrl, e.getMessage());
+                            omsLogger.error(logThreadId() + "尝试错误: {} : {}", articleUrl, e.getMessage());
                             tries++;
+                            log.error("当前尝试次数: {}", tries);
                             if (tries == retryTimes) {
                                 log.error("{},尝试请求 {} 次失败", articleUrl, tries);
-                                omsLogger.error("{},尝试请求 {} 次失败", articleUrl, tries);
+                                omsLogger.error(logThreadId() + "{},尝试请求 {} 次失败", articleUrl, tries);
                                 throw e;
                             } else {
                                 log.warn("更换代理IP和UA,尝试重新请求: {}", articleUrl);
-                                omsLogger.warn("更换代理IP和UA,尝试重新请求: {}", articleUrl);
+                                omsLogger.warn(logThreadId() + "更换代理IP和UA,尝试重新请求: {}", articleUrl);
                                 // 更换代理IP和UA
                                 createPage();
                             }
@@ -961,23 +1018,27 @@ public class PlaywrightCrawl {
                 break;
             } catch (PlaywrightException e) {
                 log.error("稿件详情采集失败: {}", articleUrl);
-                omsLogger.error("稿件详情采集失败: {}", articleUrl);
+                omsLogger.error(logThreadId() + "稿件详情采集失败: {}, {}", articleUrl, e.getMessage());
+                log.error("尝试更换详情匹配规则");
+                omsLogger.error(logThreadId() + "尝试更换详情匹配规则");
                 // 如果捕获PlaywrightException的全部错误,则无法通过job控制台杀死任务,通过对playwright的TimeoutError与net::ERR_NAME_NOT_RESOLVED错误类型判断,进行选择性抛出与重试
                 if (e.getClass().getName().equals("com.microsoft.playwright.TimeoutError") || e.getMessage().contains("net::ERR_NAME_NOT_RESOLVED") || e.getMessage().contains("net::ERR_CONNECTION_TIMED_OUT")) {
                     currentNodeIndex++;
                     if (currentNodeIndex >= articleRuleNodeList.size()) {
+                        log.info("没有更多匹配规则");
+                        omsLogger.error("没有更多匹配规则");
                         // 没有下一个规则,则跳出循环
                         changeRule = false;
                         // 记录丢弃数据
-                        articleErrorDataProcess(articleResult);
+                        articleErrorDataProcess(articleResult, e.getMessage());
                         break;
                     } else {
                         // 还有下一个规则,继续执行
                         log.info("更换下一个详情规则: {}", articleUrl);
-                        omsLogger.info("更换下一个详情规则: {}", articleUrl);
+                        omsLogger.info(logThreadId() + "更换下一个详情规则: {}", articleUrl);
                     }
                 } else {
-                    articleErrorDataProcess(articleResult);
+                    articleErrorDataProcess(articleResult, e.getMessage());
                     throw e;
                 }
             }
@@ -1006,7 +1067,7 @@ public class PlaywrightCrawl {
         boolean result = dataStorageService.addTmpCrawlData(tmpCrawlData);
         if (result) {
             log.info("数据存储成功: ", articleResult.getUrl());
-            omsLogger.info("数据存储成功: ", articleResult.getUrl());
+            omsLogger.info(logThreadId() + "数据存储成功: ", articleResult.getUrl());
         } else {
             throw new RuntimeException("数据存储失败: " + articleResult.getUrl());
         }
@@ -1026,6 +1087,8 @@ public class PlaywrightCrawl {
         tmpCrawlData.setTitle(title);
         tmpCrawlData.setUrl(url);
         tmpCrawlData.setInformationsourceid(informationSourceId);
+        tmpCrawlData.setInformationsourceDomain(informationSourceDomain);
+        tmpCrawlData.setInformationsourceName(informationSourceName);
         tmpCrawlData.setTaskid(taskId);
         tmpCrawlData.setJobid(jobId);
         tmpCrawlData.setDate(date);
@@ -1036,7 +1099,7 @@ public class PlaywrightCrawl {
         log.info("列表错误数据内容: {}", tmpCrawlData.toString());
         if (result) {
             log.info("列表错误数据存储成功: {}, {}", url, reason);
-            omsLogger.info("列表错误数据存储成功: {}, {}", url, reason);
+            omsLogger.info(logThreadId() + "列表错误数据存储成功: {}, {}", url, reason);
         } else {
             throw new RuntimeException("列表错误数据存储失败: " + url);
         }
@@ -1046,7 +1109,7 @@ public class PlaywrightCrawl {
      * 稿件错误数据处理
      * @param articleResult
      */
-    public void articleErrorDataProcess(ArticleResult articleResult) throws Exception {
+    public void articleErrorDataProcess(ArticleResult articleResult, String reason) throws Exception {
         log.info("准备处理稿件错误数据:");
         // 依次处理稿件数据
         // 1.过滤数据
@@ -1058,11 +1121,12 @@ public class PlaywrightCrawl {
         TmpCrawlData tmpCrawlData = new TmpCrawlData(articleResult);
         // 错误数据
         tmpCrawlData.setErrorCode(1);
+        tmpCrawlData.setReason(reason);
         boolean result = dataStorageService.addTmpCrawlData(tmpCrawlData);
         log.info("稿件错误数据内容: {}", tmpCrawlData.toString());
         if (result) {
             log.info("稿件错误数据存储成功: {}", articleResult.getUrl());
-            omsLogger.info("稿件错误数据存储成功: {}", articleResult.getUrl());
+            omsLogger.info(logThreadId() + "稿件错误数据存储成功: {}", articleResult.getUrl());
         } else {
             throw new RuntimeException("稿件错误数据存储失败: " + articleResult.getUrl());
         }
@@ -1102,7 +1166,7 @@ public class PlaywrightCrawl {
             }
         } catch (Exception e) {
             log.error("数据过滤错误");
-            omsLogger.error("数据过滤错误");
+            omsLogger.error(logThreadId() + "数据过滤错误");
             throw e;
         }
     }
@@ -1138,10 +1202,10 @@ public class PlaywrightCrawl {
             }
         } catch (Exception e) {
             log.error(e.getMessage());
-            omsLogger.error(e.getMessage());
+            omsLogger.error(logThreadId() + e.getMessage());
         }
         log.error("获取代理IP失败");
-        omsLogger.error("获取代理IP失败");
+        omsLogger.error(logThreadId() + "获取代理IP失败");
         return null;
     }
 
@@ -1180,6 +1244,10 @@ public class PlaywrightCrawl {
         if (oConvertUtils.isNotEmpty(playwright)) {
             playwright.close();
         }
+    }
+
+    private String logThreadId() {
+        return "[ThreadId: " + Thread.currentThread().getName() + "]  ";
     }
 
     //    由于不是所有字段都需要规则采集,所以停用此遍历方法
