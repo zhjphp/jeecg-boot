@@ -102,6 +102,10 @@ public class CheckRulePlaywrightCrawl {
     @Value("${polymerize.playwright.pageNavigateTimeout}")
     private double pageNavigateTimeout;
 
+    /**page.waitForSelectorOptions超时时间配置*/
+    @Value("${polymerize.playwright.pageNavigateTimeout}")
+    private double waitForSelectorOptionsTimeout;
+
     /**Locator超时时间配置*/
     private Locator.TextContentOptions textContentOptions;
 
@@ -113,6 +117,9 @@ public class CheckRulePlaywrightCrawl {
 
     /**page.navigate超时时间配置*/
     private Page.NavigateOptions navigateOptions;
+
+    /**page.waitForSelector超时时间*/
+    private Page.WaitForSelectorOptions waitForSelectorOptions;
 
     /**
      * 初始化 playwright
@@ -414,6 +421,7 @@ public class CheckRulePlaywrightCrawl {
         innerHTMLOptions = new Locator.InnerHTMLOptions().setTimeout(locatorTimeout);
         getAttributeOptions = new Locator.GetAttributeOptions().setTimeout(locatorTimeout);
         navigateOptions = new Page.NavigateOptions().setTimeout(pageNavigateTimeout);
+        waitForSelectorOptions = new Page.WaitForSelectorOptions().setTimeout(waitForSelectorOptionsTimeout);
         JSONObject show = new JSONObject();
         // 测试规则专用url
         String startUrl = listRuleNode.getCheckRuleUrl();
@@ -497,6 +505,14 @@ public class CheckRulePlaywrightCrawl {
                 List<ListResult> resultErrorList = new ArrayList<>();
                 // 等待加载完成
                 listPage.waitForLoadState(LoadState.DOMCONTENTLOADED);
+                // 如果只用waitForLoadState对于页面渲染较慢的网站无法抓取到内容
+                try {
+                    listPage.waitForSelector(listRuleNode.getPageMatch(), waitForSelectorOptions);
+                } catch (TimeoutError e) {
+                    // 此处不做处理,页面继续执行
+                    log.warn("加载列表页未找到区块定位内容");
+                }
+                // listPage.waitForTimeout(5000);
                 // 滚动条到底
                 int scrollCount = listPageScrollPageCount;
                 if (listRuleNode.getWaterfallFlag()) {
@@ -516,7 +532,14 @@ public class CheckRulePlaywrightCrawl {
                 for (Locator locator: locators) {
                     totalCount++;
                     ListResult listResult = new ListResult();
-                    String title = listPageLocator(listRuleNode.getArticleTitleMatch(), locator);
+                    // 有部分情况<a>标签就是列表最外层元素,标题直接写在外层区块<a>标签上
+                    // 如果没有定义标题匹配,则尝试获取外层区块标签内的textContent
+                    String title = null;
+                    if (oConvertUtils.isNotEmpty(listRuleNode.getArticleTitleMatch())) {
+                        title = listPageLocator(listRuleNode.getArticleTitleMatch(), locator);
+                    } else {
+                        title = locator.textContent();
+                    }
                     listResult.setTitle(title);
                     String dateStr = listPageLocator(listRuleNode.getArticleDateMatch(), locator);
                     Date cutDate = null;
@@ -700,8 +723,18 @@ public class CheckRulePlaywrightCrawl {
                     log.info("开始采集稿件: {}, 节点规则: {}", articleUrl, articleRuleNode.toString());
                     // 打开页面
                     Response response = articlePage.navigate(articleUrl, navigateOptions);
+                    if (!checkResponse(response)) {
+                        throw new TimeoutError(articleUrl + "请求失败,response.status: " + response.status());
+                    }
                     // 等待加载完成
                     articlePage.waitForLoadState(LoadState.DOMCONTENTLOADED);
+                    // 如果只用waitForLoadState对于页面渲染较慢的网站无法抓取到内容
+                    try {
+                        articlePage.waitForSelector(articleRuleNode.getContentMatch(), waitForSelectorOptions);
+                    } catch (TimeoutError e) {
+                        // 此处不做处理,页面继续执行
+                        log.warn("加载详情页面未找到详情定位内容");
+                    }
                     // 滚动条到底
                     scrollToBottom(articlePage, articlePageScrollPageCount);
                     // 判断是否需要点击后查看更多
@@ -714,9 +747,6 @@ public class CheckRulePlaywrightCrawl {
                         articlePage.waitForLoadState(LoadState.DOMCONTENTLOADED);
                         // 滚动条到底
                         scrollToBottom(articlePage, articlePageScrollPageCount);
-                    }
-                    if (!checkResponse(response)) {
-                        throw new TimeoutError(articleUrl + "请求失败,response.status: " + response.status());
                     }
                     log.info("网页源代码: {}", articlePage.locator("//html").innerHTML());
                     // 匹配内容

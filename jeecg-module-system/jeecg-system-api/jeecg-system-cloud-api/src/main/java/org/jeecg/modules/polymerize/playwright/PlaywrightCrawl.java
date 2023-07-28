@@ -125,6 +125,10 @@ public class PlaywrightCrawl {
     @Value("${polymerize.playwright.pageNavigateTimeout}")
     private double pageNavigateTimeout;
 
+    /**page.waitForSelectorOptions超时时间配置*/
+    @Value("${polymerize.playwright.pageNavigateTimeout}")
+    private double waitForSelectorOptionsTimeout;
+
     /**Locator超时时间配置*/
     private Locator.TextContentOptions textContentOptions;
 
@@ -136,6 +140,9 @@ public class PlaywrightCrawl {
 
     /**page.navigate超时时间配置*/
     private Page.NavigateOptions navigateOptions;
+
+    /**page.waitForSelector超时时间*/
+    private Page.WaitForSelectorOptions waitForSelectorOptions;
 
     private String informationSourceId;
 
@@ -182,6 +189,7 @@ public class PlaywrightCrawl {
             innerHTMLOptions = new Locator.InnerHTMLOptions().setTimeout(locatorTimeout);
             getAttributeOptions = new Locator.GetAttributeOptions().setTimeout(locatorTimeout);
             navigateOptions = new Page.NavigateOptions().setTimeout(pageNavigateTimeout);
+            waitForSelectorOptions = new Page.WaitForSelectorOptions().setTimeout(waitForSelectorOptionsTimeout);
             // 迭代所有的起始节点
             log.info("开始遍历StartNode:");
             while (drawflow.hasNext()) {
@@ -660,6 +668,13 @@ public class PlaywrightCrawl {
             log.info("开始匹配当前页列表区块");
             // 等待加载完成
             listPage.waitForLoadState(LoadState.DOMCONTENTLOADED);
+            // 如果只用waitForLoadState对于页面渲染较慢的网站无法抓取到内容
+            try {
+                listPage.waitForSelector(listRuleNode.getPageMatch(), waitForSelectorOptions);
+            } catch (TimeoutError e) {
+                // 此处不做处理,页面继续执行
+                log.warn("加载列表页未找到区块定位内容");
+            }
             // 滚动条到底
             int scrollCount = listPageScrollPageCount;
             if (listRuleNode.getWaterfallFlag()) {
@@ -926,7 +941,18 @@ public class PlaywrightCrawl {
                         omsLogger.info(logThreadId() + "开始采集稿件: {}", articleUrl);
                         // 打开页面
                         Response response = articlePage.navigate(articleUrl, navigateOptions);
+                        // 查验响应码
+                        if (!checkResponse(response)) {
+                            throw new TimeoutError(articleUrl + "请求失败,response.status: " + response.status());
+                        }
                         articlePage.waitForLoadState(LoadState.DOMCONTENTLOADED);
+                        // 如果只用waitForLoadState对于页面渲染较慢的网站无法抓取到内容
+                        try {
+                            articlePage.waitForSelector(articleRuleNode.getContentMatch(), waitForSelectorOptions);
+                        } catch (TimeoutError e) {
+                            // 此处不做处理,页面继续执行
+                            log.warn("加载详情页面未找到详情定位内容");
+                        }
                         // 滚动条到底
                         scrollToBottom(articlePage, articlePageScrollPageCount);
                         // 判断是否需要点击后查看更多
@@ -939,10 +965,6 @@ public class PlaywrightCrawl {
                             articlePage.waitForLoadState(LoadState.DOMCONTENTLOADED);
                             // 滚动条到底
                             scrollToBottom(articlePage, articlePageScrollPageCount);
-                        }
-                        // 查验响应码
-                        if (!checkResponse(response)) {
-                            throw new TimeoutError(articleUrl + "请求失败,response.status: " + response.status());
                         }
                         // 匹配内容
                         // 判断是否为单页采集,如果为单页采集,则忽略传入的URL,使用配置中的url
