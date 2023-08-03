@@ -17,6 +17,7 @@ import org.jeecg.modules.polymerize.playwright.ua.util.FakeUa;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
+import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
@@ -38,13 +39,14 @@ import java.util.stream.Collectors;
  * @date 2023/6/8 17:52
  */
 @Slf4j
+@RefreshScope
 @Component
 @Scope(value = ConfigurableBeanFactory.SCOPE_PROTOTYPE)
 public class CheckRulePlaywrightCrawl {
 
     private Playwright playwright;
 
-    // @Value("${polymerize.playwright.enableHeadless}")
+    @Value("${polymerize.playwright.checkRuleEnableHeadless}")
     private boolean enableHeadless = false;
 
     @Value("${polymerize.playwright.browserType}")
@@ -157,7 +159,7 @@ public class CheckRulePlaywrightCrawl {
      *
      * @throws Exception
      */
-    public void createPage() throws Exception {
+    public void createPage(boolean restoreOriginalPage) throws Exception {
         // 已经打开的页面
         String currentListPageUrl = null;
         String currentArticlePageUrl = null;
@@ -195,16 +197,26 @@ public class CheckRulePlaywrightCrawl {
         // 隐藏webdriver特征
         listPage.addInitScript("Object.defineProperties(navigator, {webdriver:{get:()=>undefined}});");
         // 恢复原有页面
-        if (oConvertUtils.isNotEmpty(currentListPageUrl)) {
-            listPage.navigate(currentListPageUrl, navigateOptions);
+        if (restoreOriginalPage) {
+            // 恢复原有页面
+            if (oConvertUtils.isNotEmpty(currentListPageUrl)) {
+                listPage.navigate(currentListPageUrl, navigateOptions);
+                listPage.waitForLoadState(LoadState.DOMCONTENTLOADED);
+                log.info("恢复原有listPage: {}", currentListPageUrl);
+            }
         }
         // 详情页
         articlePage = browserContext.newPage();
         // 隐藏webdriver特征
         articlePage.addInitScript("Object.defineProperties(navigator, {webdriver:{get:()=>undefined}});");
         // 恢复原有页面
-        if (oConvertUtils.isNotEmpty(currentArticlePageUrl)) {
-            articlePage.navigate(currentArticlePageUrl, navigateOptions);
+        if (restoreOriginalPage) {
+            // 恢复原有页面
+            if (oConvertUtils.isNotEmpty(currentArticlePageUrl)) {
+                articlePage.navigate(currentArticlePageUrl, navigateOptions);
+                articlePage.waitForLoadState(LoadState.DOMCONTENTLOADED);
+                log.info("恢复原有articlePage: {}", currentArticlePageUrl);
+            }
         }
     }
 
@@ -262,10 +274,11 @@ public class CheckRulePlaywrightCrawl {
         } else {
             // 判断区块数量是否有变化
             log.info("使用自动判断是否到底");
+            // 每次滚动之前的总条数
             int preCount = 0;
-            int totalCount = 0;
-            int tmpCount = 0;
-            // 保险,防止无线循环
+            // 捕获到的总条数
+            int totalCount = listPage.locator(pageMatch).all().size();
+            // 保险,防止无限循环
             int insure = 1000000;
             do {
                 if (oConvertUtils.isNotEmpty(moreMatch)) {
@@ -283,8 +296,9 @@ public class CheckRulePlaywrightCrawl {
                         log.info("找不到查看更多按钮");
                     }
                 }
-                for (int i = 0; i < 3; i++) {
-                    page.mouse().wheel(0, y);
+                for (int i = 0; i < 6; i++) {
+                    log.info("向下滚动页面...");
+                    page.mouse().wheel(0, y/2);
                     page.waitForLoadState(LoadState.DOMCONTENTLOADED);
                     page.waitForTimeout(2000);
                 }
@@ -293,6 +307,7 @@ public class CheckRulePlaywrightCrawl {
                 log.info("totalCount: {}", totalCount);
                 log.info("preCount: {}", preCount);
             } while ( (totalCount > preCount) && (insure > 0) );
+            log.info("页面已经到底");
         }
     }
 
@@ -432,7 +447,14 @@ public class CheckRulePlaywrightCrawl {
             // 全局配置
             initPlaywright();
             createBrowser();
-            createPage();
+            // 设置指定资源加载配置,如果配置了要屏蔽的资源,则覆盖默认的ncaos中的骗配置
+            log.info("自定义配置: {}", listRuleNode.getCheckRuleDisableLoadResource());
+            if (oConvertUtils.isNotEmpty(listRuleNode.getCheckRuleDisableLoadResource())) {
+                log.info("使用自定义配置: {}", listRuleNode.getCheckRuleDisableLoadResource());
+                this.disableLoadResource = listRuleNode.getCheckRuleDisableLoadResource();
+            }
+            log.info("资源屏蔽配置：{}", this.disableLoadResource);
+            createPage(false);
 
             Response response = listPage.navigate(startUrl, navigateOptions);
             if (!checkResponse(response)) {
@@ -683,9 +705,18 @@ public class CheckRulePlaywrightCrawl {
         } catch (Exception e) {
             throw e;
         } finally {
-            listPage.close();
-            articlePage.close();
-            browserContext.close();
+            if (oConvertUtils.isNotEmpty(listPage)) {
+                log.info("关闭 listPage");
+                listPage.close();
+            }
+            if (oConvertUtils.isNotEmpty(articlePage)) {
+                log.info("关闭 articlePage");
+                articlePage.close();
+            }
+            if (oConvertUtils.isNotEmpty(browserContext)) {
+                log.info("关闭 browserContext");
+                browserContext.close();
+            }
         }
         log.info("结束");
         return show;
@@ -713,7 +744,12 @@ public class CheckRulePlaywrightCrawl {
             // 全局配置
             initPlaywright();
             createBrowser();
-            createPage();
+            // 设置指定资源加载配置,如果配置了要屏蔽的资源,则覆盖默认的ncaos中的骗配置
+            if (oConvertUtils.isNotEmpty(articleRuleNode.getCheckRuleDisableLoadResource())) {
+                this.disableLoadResource = articleRuleNode.getCheckRuleDisableLoadResource();
+            }
+            log.info("资源屏蔽配置：{}", this.disableLoadResource);
+            createPage(false);
 
             // 超时重试一次
             int tries = 0;
@@ -803,7 +839,7 @@ public class CheckRulePlaywrightCrawl {
                         }
                         log.info("更换代理IP和UA,尝试重新请求: {}", articleUrl);
                         // 更换代理IP和UA
-                        createPage();
+                        createPage(true);
                     } else {
                         throw e;
                     }

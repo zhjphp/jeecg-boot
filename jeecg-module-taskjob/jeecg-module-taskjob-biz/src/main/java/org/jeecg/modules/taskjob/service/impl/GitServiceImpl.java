@@ -5,6 +5,7 @@ import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
 import org.jeecg.modules.taskjob.service.IGitService;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.stereotype.Component;
 import tech.powerjob.worker.log.OmsLogger;
 
@@ -19,6 +20,7 @@ import java.util.regex.Pattern;
  * @date 2023/5/23 15:28
  */
 @Slf4j
+@RefreshScope
 @Component
 public class GitServiceImpl implements IGitService {
 

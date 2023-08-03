@@ -66,4 +66,3 @@ spring:
     import:
       - optional:nacos:jeecg.yaml
       - optional:nacos:jeecg-@profile.name@.yaml
-      - optional:nacos:jeecg-system.yaml

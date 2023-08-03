@@ -6,14 +6,16 @@ import org.jeecg.common.util.SpringContextUtils;
 import org.jeecg.modules.polymerize.util.PolymerizeRedisUtil;
 import org.jeecg.modules.taskjob.service.IAuthService;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.stereotype.Component;
 
 /**
  * @version 1.0
- * @description: TODO
+ * @description: feign验证
  * @author: wayne
  * @date 2023/5/23 10:25
  */
+@RefreshScope
 @Component
 public class AuthServiceImpl implements IAuthService {
 

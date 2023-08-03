@@ -19,6 +19,7 @@ import org.jeecg.modules.polymerize.playwright.filter.PlaywrightDataFilter;
 import org.jeecg.modules.polymerize.playwright.ua.util.FakeUa;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
+import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 import tech.powerjob.worker.log.OmsLogger;
@@ -58,6 +59,7 @@ import java.util.stream.Collectors;
  * 11. 自定义locator.attribute提取属性
  */
 @Slf4j
+@RefreshScope
 @Component
 @Scope(value = ConfigurableBeanFactory.SCOPE_PROTOTYPE)
 public class PlaywrightCrawl {
@@ -179,7 +181,6 @@ public class PlaywrightCrawl {
             // 全局配置
             initPlaywright();
             createBrowser();
-            createPage();
             // 初始化规则配置
             drawflow = new Drawflow(jsonConfig);
             log.info("初始化规则配置: {}", drawflow.toString());
@@ -194,6 +195,13 @@ public class PlaywrightCrawl {
             log.info("开始遍历StartNode:");
             while (drawflow.hasNext()) {
                 DrawflowNode startNode = drawflow.next();
+                StartRuleNode startRuleNode = new StartRuleNode(startNode.getData());
+                // 如果起始节点配置了要屏蔽的资源,则覆盖默认的ncaos中的骗配置
+                if (oConvertUtils.isNotEmpty(startRuleNode.getDisableLoadResource())) {
+                    this.disableLoadResource = startRuleNode.getDisableLoadResource();
+                }
+                omsLogger.info("web资源加载配置: {}", this.disableLoadResource);
+                createPage(false);
                 log.info("StartNode: {}", startNode.toString());
                 // 每个起始节点代表一条线
                 // 获取下级节点
@@ -279,9 +287,10 @@ public class PlaywrightCrawl {
     /**
      * 配置browserContext,建立浏览器page
      *
+     * @param restoreOriginalPage
      * @throws Exception
      */
-    public void createPage() throws Exception {
+    public void createPage(boolean restoreOriginalPage) throws Exception {
         log.info("执行createPage()");
         omsLogger.info(logThreadId() + "执行createPage()");
         // 已经打开的页面
@@ -328,23 +337,27 @@ public class PlaywrightCrawl {
         listPage = browserContext.newPage();
         // 隐藏webdriver特征
         listPage.addInitScript("Object.defineProperties(navigator, {webdriver:{get:()=>undefined}});");
-        // 恢复原有页面
-        if (oConvertUtils.isNotEmpty(currentListPageUrl)) {
-            listPage.navigate(currentListPageUrl, navigateOptions);
-            listPage.waitForLoadState(LoadState.DOMCONTENTLOADED);
-            log.info("恢复原有listPage: {}", currentListPageUrl);
-            omsLogger.info(logThreadId() + "恢复原有listPage: {}", currentListPageUrl);
+        if (restoreOriginalPage) {
+            // 恢复原有页面
+            if (oConvertUtils.isNotEmpty(currentListPageUrl)) {
+                listPage.navigate(currentListPageUrl, navigateOptions);
+                listPage.waitForLoadState(LoadState.DOMCONTENTLOADED);
+                log.info("恢复原有listPage: {}", currentListPageUrl);
+                omsLogger.info(logThreadId() + "恢复原有listPage: {}", currentListPageUrl);
+            }
         }
         // 详情页
         articlePage = browserContext.newPage();
         // 隐藏webdriver特征
         articlePage.addInitScript("Object.defineProperties(navigator, {webdriver:{get:()=>undefined}});");
-        // 恢复原有页面
-        if (oConvertUtils.isNotEmpty(currentArticlePageUrl)) {
-            articlePage.navigate(currentArticlePageUrl, navigateOptions);
-            articlePage.waitForLoadState(LoadState.DOMCONTENTLOADED);
-            log.info("恢复原有articlePage: {}", currentArticlePageUrl);
-            omsLogger.info(logThreadId() + "恢复原有articlePage: {}", currentArticlePageUrl);
+        if (restoreOriginalPage) {
+            // 恢复原有页面
+            if (oConvertUtils.isNotEmpty(currentArticlePageUrl)) {
+                articlePage.navigate(currentArticlePageUrl, navigateOptions);
+                articlePage.waitForLoadState(LoadState.DOMCONTENTLOADED);
+                log.info("恢复原有articlePage: {}", currentArticlePageUrl);
+                omsLogger.info(logThreadId() + "恢复原有articlePage: {}", currentArticlePageUrl);
+            }
         }
     }
 
@@ -448,7 +461,7 @@ public class PlaywrightCrawl {
                         log.info("更换代理IP和UA,尝试重新请求: {}", listPage.url());
                         omsLogger.error(logThreadId() + "更换代理IP和UA,尝试重新请求: {}", listPage.url());
                         // 更换代理IP和UA
-                        createPage();
+                        createPage(true);
                     } else {
                         throw e;
                     }
@@ -525,36 +538,43 @@ public class PlaywrightCrawl {
         } else {
             // 判断区块数量是否有变化
             log.info("使用自动判断是否到底");
+            // 每次滚动之前的总条数
             int preCount = 0;
+            // 捕获到的总条数
             int totalCount = listPage.locator(pageMatch).all().size();
-            // 保险,防止无线循环
-            int insure = 50;
-            while ( (totalCount > preCount) && (insure > 0) ) {
-                // 点击查看更多按钮
-                log.info("moreMatch: {}", moreMatch);
+            // 保险,防止无限循环
+            int insure = 1000000;
+            do {
                 if (oConvertUtils.isNotEmpty(moreMatch)) {
                     try {
                         Locator moreLocator = listPage.locator(moreMatch);
                         log.info("检查是否存在查看更多按钮: {}", moreLocator.count());
                         if ( moreLocator.count() == 1) {
                             log.info("点击查看更多按钮");
+                            omsLogger.info("点击查看更多按钮");
                             moreLocator.click();
                             listPage.waitForLoadState(LoadState.DOMCONTENTLOADED);
                             listPage.waitForTimeout(500);
                         }
                     } catch (TimeoutError e) {
                         // 捕获不存在元素的错误
-                        log.warn("找不到查看更多按钮");
-                        omsLogger.warn(logThreadId() + "找不到查看更多按钮");
+                        log.info("找不到查看更多按钮");
+                        omsLogger.info("找不到查看更多按钮");
                     }
                 }
-                page.mouse().wheel(0, y);
-                page.waitForLoadState(LoadState.DOMCONTENTLOADED);
-                int tmpCount = listPage.locator(pageMatch).all().size();
+                for (int i = 0; i < 6; i++) {
+                    log.info("向下滚动页面...");
+                    page.mouse().wheel(0, y/2);
+                    page.waitForLoadState(LoadState.DOMCONTENTLOADED);
+                    page.waitForTimeout(2000);
+                }
                 preCount = totalCount;
-                totalCount += tmpCount;
-                insure--;
-            }
+                totalCount = page.locator(pageMatch).all().size();
+                log.info("totalCount: {}", totalCount);
+                log.info("preCount: {}", preCount);
+            } while ( (totalCount > preCount) && (insure > 0) );
+            log.info("页面已经到底");
+            omsLogger.info("页面已经到底");
         }
     }
 
@@ -1030,7 +1050,7 @@ public class PlaywrightCrawl {
                                 log.warn("更换代理IP和UA,尝试重新请求: {}", articleUrl);
                                 omsLogger.warn(logThreadId() + "更换代理IP和UA,尝试重新请求: {}", articleUrl);
                                 // 更换代理IP和UA
-                                createPage();
+                                createPage(true);
                             }
                         } else {
                             throw e;

@@ -11,6 +11,7 @@ import org.jeecg.common.util.oConvertUtils;
 import org.jeecg.modules.proxy.service.IIPProxyService;
 import org.jeecg.modules.proxy.vo.IPProxyVO;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
@@ -22,6 +23,7 @@ import javax.annotation.Resource;
  * @date 2023/6/1 22:16
  */
 @Slf4j
+@RefreshScope
 @Service(value = "ZhiMaProxyService")
 public class ZhiMaProxyService implements IIPProxyService {
 

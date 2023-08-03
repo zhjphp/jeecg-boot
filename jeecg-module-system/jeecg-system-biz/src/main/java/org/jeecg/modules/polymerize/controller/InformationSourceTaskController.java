@@ -61,6 +61,9 @@ public class InformationSourceTaskController extends JeecgController<Information
 	/**
 	 * 分页列表查询
 	 *
+	 * TODO
+	 * 删除爬虫侯,但是对应任务有配置了已经删除的爬虫的时候,会报错！
+	 *
 	 * @param informationSourceTask
 	 * @param pageNo
 	 * @param pageSize

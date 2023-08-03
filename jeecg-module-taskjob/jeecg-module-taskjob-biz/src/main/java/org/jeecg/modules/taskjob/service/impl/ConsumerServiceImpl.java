@@ -12,6 +12,7 @@ import org.jeecg.modules.taskjob.service.ICommandService;
 import org.jeecg.modules.taskjob.service.IConsumerService;
 import org.jeecg.modules.taskjob.service.IGitService;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.stereotype.Component;
 import tech.powerjob.worker.log.OmsLogger;
 
@@ -26,6 +27,7 @@ import java.util.Base64;
  * @date 2023/5/23 14:07
  */
 @Slf4j
+@RefreshScope
 @Component
 public class ConsumerServiceImpl implements IConsumerService {
 

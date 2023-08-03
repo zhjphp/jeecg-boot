@@ -20,6 +20,7 @@ public class ListRuleNode {
 
     public ListRuleNode(JSONObject obj) {
         checkRuleUrl = obj.getString("checkRuleUrl");
+        checkRuleDisableLoadResource = obj.getString("checkRuleDisableLoadResource");
         effectiveDays = obj.getInteger("effectiveDays");
         startTime = obj.getDate("startTime");
         endTime = obj.getDate("endTime");
@@ -43,6 +44,9 @@ public class ListRuleNode {
 
     /**测试规则url*/
     public String checkRuleUrl;
+
+    /**资源屏蔽配置*/
+    public String checkRuleDisableLoadResource;
 
     /**有效天数*/
     public Integer effectiveDays;

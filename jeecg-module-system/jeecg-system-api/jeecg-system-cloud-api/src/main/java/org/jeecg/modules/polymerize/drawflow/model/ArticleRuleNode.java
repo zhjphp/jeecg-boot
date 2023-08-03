@@ -14,6 +14,7 @@ public class ArticleRuleNode {
 
     public ArticleRuleNode(JSONObject obj) {
         checkRuleUrl = obj.getString("checkRuleUrl");
+        checkRuleDisableLoadResource = obj.getString("checkRuleDisableLoadResource");
         customTags = obj.getString("customTags");
         singleFlag = obj.getBoolean("singleFlag");
         singleUrl = obj.getString("singleUrl");
@@ -37,6 +38,9 @@ public class ArticleRuleNode {
 
     /**测试规则url*/
     public String checkRuleUrl;
+
+    /**资源屏蔽配置*/
+    public String checkRuleDisableLoadResource;
 
     /**自定义标签*/
     public String customTags;

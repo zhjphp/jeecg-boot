@@ -9,17 +9,19 @@ import org.jeecg.modules.polymerize.api.IPolymerizeAPI;
 import org.jeecg.modules.polymerize.entity.TmpCrawlData;
 import org.jeecg.modules.polymerize.util.PolymerizeRedisUtil;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
 
 /**
  * @version 1.0
- * @description: TODO
+ * @description: 数据存储服务
  * @author: wayne
  * @date 2023/6/30 16:24
  */
 @Slf4j
+@RefreshScope
 @Component
 public class DataStorageService {
 

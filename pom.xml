@@ -75,7 +75,9 @@
 		<!-- jGit -->
 		<jGit.version>6.5.0.202303070854-r</jGit.version>
 		<powerjob.version>4.3.2</powerjob.version>
+		<playwright.version>1.34.0</playwright.version>
 		<zt-exec.version>1.121</zt-exec.version>
+		<jsoup.version>1.16.1</jsoup.version>
 	</properties>
 
 	<modules>
@@ -463,7 +465,7 @@
 				<!--Nacos服务地址-->
 				<config.server-addr>jeecg-boot-nacos:8848</config.server-addr>
 				<!--Nacos配置中心命名空间,用于支持多环境.这里必须使用ID，不能使用名称,默认为空-->
-				<config.namespace></config.namespace>
+				<config.namespace>prod</config.namespace>
 				<!--Nacos配置分组名称-->
 				<config.group>DEFAULT_GROUP</config.group>
 			</properties>

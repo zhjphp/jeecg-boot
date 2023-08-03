@@ -16,6 +16,7 @@ import org.jeecg.modules.polymerize.util.PolymerizeRedisUtil;
 import org.jeecg.modules.taskjob.service.IAuthService;
 import org.jeecg.modules.taskjob.service.IProducerService;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.stereotype.Component;
 import tech.powerjob.common.serialize.JsonUtils;
 import tech.powerjob.worker.core.processor.TaskContext;
@@ -32,6 +33,7 @@ import java.util.List;
  * @date 2023/5/23 9:57
  */
 @Slf4j
+@RefreshScope
 @Component
 public class ProducerServiceImpl implements IProducerService {
 
