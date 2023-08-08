@@ -341,7 +341,7 @@ public class PlaywrightCrawl {
             // 恢复原有页面
             if (oConvertUtils.isNotEmpty(currentListPageUrl)) {
                 listPage.navigate(currentListPageUrl, navigateOptions);
-                listPage.waitForLoadState(LoadState.DOMCONTENTLOADED);
+                waitForPageLoaded(listPage);
                 log.info("恢复原有listPage: {}", currentListPageUrl);
                 omsLogger.info(logThreadId() + "恢复原有listPage: {}", currentListPageUrl);
             }
@@ -354,7 +354,7 @@ public class PlaywrightCrawl {
             // 恢复原有页面
             if (oConvertUtils.isNotEmpty(currentArticlePageUrl)) {
                 articlePage.navigate(currentArticlePageUrl, navigateOptions);
-                articlePage.waitForLoadState(LoadState.DOMCONTENTLOADED);
+                waitForPageLoaded(articlePage);
                 log.info("恢复原有articlePage: {}", currentArticlePageUrl);
                 omsLogger.info(logThreadId() + "恢复原有articlePage: {}", currentArticlePageUrl);
             }
@@ -442,9 +442,7 @@ public class PlaywrightCrawl {
                     Response response = listPage.navigate(startUrl, navigateOptions);
                     log.info("开始采集列表页: {}", startUrl);
                     omsLogger.info(logThreadId() + "开始采集列表页: {}", startUrl);
-                    if (!checkResponse(response)) {
-                        throw new TimeoutError(startUrl + "请求失败,response.status: " + response.status());
-                    }
+                    checkResponse(response, startUrl);
                     // 采集列表
                     getList(listRuleNode, articleRuleNodeList);
                     break;
@@ -471,6 +469,15 @@ public class PlaywrightCrawl {
 
     }
 
+    private void waitForPageLoaded(Page page) {
+        try {
+            page.waitForLoadState(LoadState.DOMCONTENTLOADED);
+        } catch (TimeoutError e) {
+            log.warn("waitForLoadState 超时: {}", page.url());
+            omsLogger.warn("waitForLoadState 超时: {}", page.url());
+        }
+    }
+
     /**
      * 滚动条到最下方
      * https://stackoverflow.com/questions/69183922/playwright-auto-scroll-to-bottom-of-infinite-scroll-page
@@ -488,7 +495,7 @@ public class PlaywrightCrawl {
         double y = Double.parseDouble(scrollHeight.toString());
         for (int i = 0 ; i < pageCount; i ++) {
             page.mouse().wheel(0, y);
-            page.waitForLoadState(LoadState.DOMCONTENTLOADED);
+            waitForPageLoaded(page);
             // page.waitForTimeout(500);
         }
     }
@@ -515,10 +522,10 @@ public class PlaywrightCrawl {
             log.info("使用底部元素匹配规则");
             for (int i = 0 ; i < 1000000; i ++) {
                 page.mouse().wheel(0, y);
-                page.waitForLoadState(LoadState.DOMCONTENTLOADED);
+                waitForPageLoaded(page);
                 try {
                     // 如果出现底部标识,则不在滚动
-                    if (oConvertUtils.isNotEmpty(listPage.locator(bottomMatch).innerHTML(innerHTMLOptions))) {
+                    if (oConvertUtils.isNotEmpty(page.locator(bottomMatch).innerHTML(innerHTMLOptions))) {
                         break;
                     }
                 } catch (TimeoutError e) {
@@ -531,9 +538,9 @@ public class PlaywrightCrawl {
             // 如果没有配置底部特征
             for (int i = 0 ; i < pageCount; i ++) {
                 page.mouse().wheel(0, 500);
-                page.waitForLoadState(LoadState.DOMCONTENTLOADED);
+                waitForPageLoaded(page);
                 log.info("屏数: {}", i);
-                listPage.waitForTimeout(200);
+                page.waitForTimeout(200);
             }
         } else {
             // 判断区块数量是否有变化
@@ -541,20 +548,20 @@ public class PlaywrightCrawl {
             // 每次滚动之前的总条数
             int preCount = 0;
             // 捕获到的总条数
-            int totalCount = listPage.locator(pageMatch).all().size();
+            int totalCount = page.locator(pageMatch).all().size();
             // 保险,防止无限循环
             int insure = 1000000;
             do {
                 if (oConvertUtils.isNotEmpty(moreMatch)) {
                     try {
-                        Locator moreLocator = listPage.locator(moreMatch);
+                        Locator moreLocator = page.locator(moreMatch);
                         log.info("检查是否存在查看更多按钮: {}", moreLocator.count());
                         if ( moreLocator.count() == 1) {
                             log.info("点击查看更多按钮");
                             omsLogger.info("点击查看更多按钮");
                             moreLocator.click();
-                            listPage.waitForLoadState(LoadState.DOMCONTENTLOADED);
-                            listPage.waitForTimeout(500);
+                            waitForPageLoaded(page);
+                            page.waitForTimeout(500);
                         }
                     } catch (TimeoutError e) {
                         // 捕获不存在元素的错误
@@ -565,7 +572,7 @@ public class PlaywrightCrawl {
                 for (int i = 0; i < 6; i++) {
                     log.info("向下滚动页面...");
                     page.mouse().wheel(0, y/2);
-                    page.waitForLoadState(LoadState.DOMCONTENTLOADED);
+                    waitForPageLoaded(page);
                     page.waitForTimeout(2000);
                 }
                 preCount = totalCount;
@@ -687,7 +694,7 @@ public class PlaywrightCrawl {
             // 匹配区块
             log.info("开始匹配当前页列表区块");
             // 等待加载完成
-            listPage.waitForLoadState(LoadState.DOMCONTENTLOADED);
+            waitForPageLoaded(listPage);
             // 如果只用waitForLoadState对于页面渲染较慢的网站无法抓取到内容
             try {
                 listPage.waitForSelector(listRuleNode.getPageMatch(), waitForSelectorOptions);
@@ -962,10 +969,8 @@ public class PlaywrightCrawl {
                         // 打开页面
                         Response response = articlePage.navigate(articleUrl, navigateOptions);
                         // 查验响应码
-                        if (!checkResponse(response)) {
-                            throw new TimeoutError(articleUrl + "请求失败,response.status: " + response.status());
-                        }
-                        articlePage.waitForLoadState(LoadState.DOMCONTENTLOADED);
+                        checkResponse(response, articleUrl);
+                        waitForPageLoaded(articlePage);
                         // 如果只用waitForLoadState对于页面渲染较慢的网站无法抓取到内容
                         try {
                             articlePage.waitForSelector(articleRuleNode.getContentMatch(), waitForSelectorOptions);
@@ -982,7 +987,7 @@ public class PlaywrightCrawl {
                             }
                             articlePage.locator(articleRuleNode.getMoreButtonMatch()).click();
                             // 等待加载完成
-                            articlePage.waitForLoadState(LoadState.DOMCONTENTLOADED);
+                            waitForPageLoaded(articlePage);
                             // 滚动条到底
                             scrollToBottom(articlePage, articlePageScrollPageCount);
                         }
@@ -1219,9 +1224,19 @@ public class PlaywrightCrawl {
      * @param response
      * @return
      */
-    public boolean checkResponse(Response response) {
+    public boolean checkResponse(Response response, String url) throws TimeoutError {
         // 请求出错
-        return (response.status() <= 399) && (response.status() >= 200);
+        if (oConvertUtils.isNotEmpty(response)) {
+            if ( (response.status() <= 399) && (response.status() >= 200) ) {
+                return true;
+            } else {
+                throw new TimeoutError(url + "请求失败,response.status: " + response.status());
+            }
+        } else {
+            log.error("checkResponse Response 为空, response: {}", response);
+            omsLogger.error("checkResponse Response 为空, response: {}", response);
+            throw new TimeoutError(url + "Response 为空 null");
+        }
     }
 
     /**
