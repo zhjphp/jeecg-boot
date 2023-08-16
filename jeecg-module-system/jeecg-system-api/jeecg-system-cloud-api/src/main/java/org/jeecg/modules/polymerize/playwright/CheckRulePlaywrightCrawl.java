@@ -13,8 +13,8 @@ import org.jeecg.modules.polymerize.drawflow.*;
 import org.jeecg.modules.polymerize.drawflow.model.*;
 import org.jeecg.modules.polymerize.playwright.exception.RequestException;
 import org.jeecg.modules.polymerize.playwright.filter.PlaywrightDataFilter;
+import org.jeecg.modules.polymerize.playwright.parser.PageParser;
 import org.jeecg.modules.polymerize.playwright.ua.util.FakeUa;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
@@ -25,7 +25,6 @@ import javax.annotation.Resource;
 import java.lang.reflect.Field;
 import java.net.URI;
 import java.net.URL;
-import java.sql.Time;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.regex.Matcher;
@@ -92,10 +91,6 @@ public class CheckRulePlaywrightCrawl {
 
     private Drawflow drawflow;
 
-    public static final String XPATH_LOCATOR_PREFIX = "xpath=";
-
-    public static final String REGULAR_EXPRESSION_LOCATOR_PREFIX = "regex=";
-
     /**Locator超时时间配置*/
     @Value("${polymerize.playwright.locatorTimeout}")
     private double locatorTimeout;
@@ -122,6 +117,9 @@ public class CheckRulePlaywrightCrawl {
 
     /**page.waitForSelector超时时间*/
     private Page.WaitForSelectorOptions waitForSelectorOptions;
+
+    @Resource
+    private PageParser pageParser;
 
     /**
      * 初始化 playwright
@@ -254,7 +252,10 @@ public class CheckRulePlaywrightCrawl {
                 page.waitForLoadState(LoadState.DOMCONTENTLOADED);
                 try {
                     // 如果出现底部标识,则不在滚动
-                    if (oConvertUtils.isNotEmpty(page.locator(bottomMatch).innerHTML(innerHTMLOptions))) {
+//                    if (oConvertUtils.isNotEmpty(page.locator(bottomMatch).innerHTML(innerHTMLOptions))) {
+//                        break;
+//                    }
+                    if (page.locator(bottomMatch).isVisible()) {
                         break;
                     }
                 } catch (TimeoutError e) {
@@ -276,20 +277,21 @@ public class CheckRulePlaywrightCrawl {
             log.info("使用自动判断是否到底");
             // 每次滚动之前的总条数
             int preCount = 0;
-            // 捕获到的总条数
+            // 捕获到的总条数,仅支持单指令,不需要pagePaser.parse解析
             int totalCount = listPage.locator(pageMatch).all().size();
             // 保险,防止无限循环
             int insure = 1000000;
             do {
                 if (oConvertUtils.isNotEmpty(moreMatch)) {
                     try {
-                        Locator moreLocator = listPage.locator(moreMatch);
+                        // Locator moreLocator = listPage.locator(moreMatch);
+                        Locator moreLocator = listPageLocatorParser(moreMatch, null, page, null);
                         log.info("检查是否存在查看更多按钮: {}", moreLocator.count());
                         if ( moreLocator.count() == 1) {
                             log.info("点击查看更多按钮");
                             moreLocator.click();
-                            listPage.waitForLoadState(LoadState.DOMCONTENTLOADED);
-                            listPage.waitForTimeout(500);
+                            page.waitForLoadState(LoadState.DOMCONTENTLOADED);
+                            page.waitForTimeout(500);
                         }
                     } catch (TimeoutError e) {
                         // 捕获不存在元素的错误
@@ -311,117 +313,60 @@ public class CheckRulePlaywrightCrawl {
         }
     }
 
-    public String listPageLocator(String match, Locator locator) throws Exception {
-        String result = null;
-        if (oConvertUtils.isNotEmpty(match)) {
-            // 判断定位方式
-            if (match.startsWith(PlaywrightCrawl.XPATH_LOCATOR_PREFIX)) {
-                // xpath
-                if (oConvertUtils.isNotEmpty(locator)) {
-                    result = locator.locator(match).textContent(textContentOptions);
-                } else {
-                    result = listPage.locator(match).textContent(textContentOptions);
-                }
-            } else if (match.startsWith(PlaywrightCrawl.REGULAR_EXPRESSION_LOCATOR_PREFIX)) {
-                // 正则表达式,正则需要去除前缀标识才能运行
-                String newMatcher = match.replace(PlaywrightCrawl.REGULAR_EXPRESSION_LOCATOR_PREFIX, "");
-                Matcher matcher = Pattern.compile(newMatcher).matcher(listPage.locator("//html").innerHTML(innerHTMLOptions));
-                if (matcher.find()) {
-                    result = matcher.group(1);
-                }
-            } else {
-                // 其他不支持
-                throw new Exception("不支持的定位器: " + match);
-            }
-        }
+    /**
+     * 列表页内容匹配解析
+     *
+     * @param match
+     * @param locator
+     * @param name
+     * @return String
+     * @throws RuntimeException
+     */
+    public String listPageContentParser(String match, Locator locator, Page page, String name) throws RuntimeException {
+        String result = pageParser.listPageContentParser(match, locator, page, listPage.content(), name);
         return result;
     }
 
-//    由于不是所有字段都需要规则采集,所以停用此遍历方法
-//    public void articlePageLocator(ArticleResult articleResult, ArticleRuleNode articleRuleNode) throws Exception {
-//        Field[] fields = articleResult.getClass().getDeclaredFields();
-//        for (Field field : fields) {
-//            String result = null;
-//            String fieldName = field.getName();
-//            String matchName = fieldName + "Match";
-//            Field nodeFiled = articleRuleNode.getClass().getField(matchName);
-//            Object matchObj = nodeFiled.get(articleRuleNode);
-//            if (oConvertUtils.isNotEmpty(matchObj)) {
-//                String match = matchObj.toString();
-//                // 判断定位方式
-//                if (match.startsWith(PlaywrightCrawl.XPATH_LOCATOR_PREFIX)) {
-//                    // 判断字段
-//                    if (fieldName.equals("content")) {
-//                        // 稿件详情匹配,支持选取多个标签,然后合并
-//                        List<Locator> contentLocatorList = articlePage.locator(match).all();
-//                        List<String> contentList = contentLocatorList.stream().map(
-//                                locator -> {
-//                                    return locator.innerHTML();
-//                                }
-//                        ).collect(Collectors.toList());
-//                        result = String.join("", contentList);
-//                    } else {
-//                        // 其他匹配
-//                        result = articlePage.locator(match).textContent();
-//                    }
-//                    log.info("match is xpath: ");
-//                    log.info("match is : {}", match);
-//                    // xpath
-//
-//                    nodeFiled.set(articleRuleNode, result);
-//                } else if (match.startsWith(PlaywrightCrawl.REGULAR_EXPRESSION_LOCATOR_PREFIX)) {
-//                    log.info("match is regex: ");
-//                    // 正则表达式,正则需要去除前缀标识才能运行
-//                    String newMatch = match.replace(PlaywrightCrawl.REGULAR_EXPRESSION_LOCATOR_PREFIX, "");
-//                    log.info("match is : {}", newMatch);
-//                    Matcher matcher = Pattern.compile(newMatch).matcher(articlePage.content());
-//                    log.info("groupcount: {}", matcher.groupCount());
-//                    if (matcher.find()) {
-//                        result = matcher.group(1);
-//                        nodeFiled.set(articleRuleNode, result);
-//                        log.info("regex is find: {}", result);
-//                    } else {
-//                        log.info("regex not find");
-//                    }
-//                } else {
-//                    // 其他不支持
-//                    throw new Exception(fieldName + ": 不支持的定位器");
-//                }
-//            }
-//        }
-//    }
-
     /**
-     * 详情页页定位器,判断使用xpath还是regex进行定位,并处理相关逻辑
+     * 列表页区块匹配解析
      *
      * @param match
+     * @param locator
+     * @param name
      * @return String
-     * @exception Exception
+     * @throws RuntimeException
      */
-    public String articlePageLocator(String match) throws Exception {
-        String result = null;
-        if (oConvertUtils.isNotEmpty(match)) {
-            // 判断定位方式
-            if (match.startsWith(PlaywrightCrawl.XPATH_LOCATOR_PREFIX)) {
-                // xpath
-                log.info("xpath: {}", match);
-                result = articlePage.locator(match).textContent(textContentOptions);
-            } else if (match.startsWith(PlaywrightCrawl.REGULAR_EXPRESSION_LOCATOR_PREFIX)) {
-                // 正则表达式,正则需要去除前缀标识才能运行
-                String newMatch = match.replace(PlaywrightCrawl.REGULAR_EXPRESSION_LOCATOR_PREFIX, "");
-                Matcher matcher = Pattern.compile(newMatch).matcher(articlePage.locator("//html").innerHTML(innerHTMLOptions));
-                if (matcher.find()) {
-                    result = matcher.group(1);
-                    log.info("regex: {}", result);
-                } else {
-                    log.info("regex not find");
-                }
-            } else {
-                // 其他不支持
-                throw new Exception("不支持的定位器: " + match);
-            }
-        }
+    public Locator listPageLocatorParser(String match, Locator locator, Page page, String name) throws RuntimeException {
+        Locator locatorResult = pageParser.listPageLocatorParser(match, locator, page, name);
+        return locatorResult;
+    }
+
+    /**
+     * 详情页内容匹配解析
+     *
+     * @param match
+     * @param locator
+     * @param name
+     * @return String
+     * @throws RuntimeException
+     */
+    public String articlePageContentParser(String match, Locator locator, Page page, String name) throws RuntimeException {
+        String result = pageParser.articlePageContentParser(match, locator, page, listPage.content(), name);
         return result;
+    }
+
+    /**
+     * 详情页区块匹配解析
+     *
+     * @param match
+     * @param locator
+     * @param name
+     * @return String
+     * @throws RuntimeException
+     */
+    public Locator articlePageLocatorParser(String match, Locator locator, Page page, String name) throws RuntimeException {
+        Locator locatorResult = pageParser.articlePageLocatorParser(match, locator, page, name);
+        return locatorResult;
     }
 
     /**
@@ -437,6 +382,11 @@ public class CheckRulePlaywrightCrawl {
         getAttributeOptions = new Locator.GetAttributeOptions().setTimeout(locatorTimeout);
         navigateOptions = new Page.NavigateOptions().setTimeout(pageNavigateTimeout);
         waitForSelectorOptions = new Page.WaitForSelectorOptions().setTimeout(waitForSelectorOptionsTimeout);
+        // 配置locatorParser
+        pageParser.setTextContentOptions(textContentOptions);
+        pageParser.setGetAttributeOptions(getAttributeOptions);
+        pageParser.setInnerHTMLOptions(innerHTMLOptions);
+
         JSONObject show = new JSONObject();
         // 测试规则专用url
         String startUrl = listRuleNode.getCheckRuleUrl();
@@ -470,7 +420,7 @@ public class CheckRulePlaywrightCrawl {
             } else if (oConvertUtils.isNotEmpty(listRuleNode.getTotalPageMatch())) {
                 // 其次判断总页数匹配
                 try {
-                    String tmpTotalPage = listPageLocator(listRuleNode.getTotalPageMatch(), null);
+                    String tmpTotalPage = listPageContentParser(listRuleNode.getTotalPageMatch(), null, listPage, RuleNodeUtil.getFiledName(ListRuleNode::getTotalPageMatch));
                     totalPage = Integer.parseInt(tmpTotalPage);
                 } catch (TimeoutError e) {
                     log.warn("没有匹配到总页数,默认只有一页");
@@ -479,7 +429,7 @@ public class CheckRulePlaywrightCrawl {
             } else if (oConvertUtils.isNotEmpty(listRuleNode.getTotalCountMatch())) {
                 log.info("使用总稿件数量匹配");
                 // 判断是否配置总稿件数量匹配
-                Integer totalCount = Integer.parseInt(listPageLocator(listRuleNode.getTotalCountMatch(), null));
+                Integer totalCount = Integer.parseInt(listPageContentParser(listRuleNode.getTotalCountMatch(), null, listPage, RuleNodeUtil.getFiledName(ListRuleNode::getTotalCountMatch)));
                 log.info("使用总稿件数量为: {}", totalCount);
                 if (totalCount != null && totalCount > 0) {
                     // 查看是否指定每页稿件数量
@@ -527,9 +477,9 @@ public class CheckRulePlaywrightCrawl {
                 List<ListResult> resultErrorList = new ArrayList<>();
                 // 等待加载完成
                 listPage.waitForLoadState(LoadState.DOMCONTENTLOADED);
-                // 如果只用waitForLoadState对于页面渲染较慢的网站无法抓取到内容
+                // 如果只用waitForLoadState对于页面渲染较慢的网站无法抓取到内容,采取等待标志性元素探测的方式判断页面是否加载完成,此处使用稿件正文内容进行探测
                 try {
-                    listPage.waitForSelector(listRuleNode.getPageMatch(), waitForSelectorOptions);
+                    pageParser.waitForSelector(listRuleNode.getPageMatch(), listPage);
                 } catch (TimeoutError e) {
                     // 此处不做处理,页面继续执行
                     log.warn("加载列表页未找到区块定位内容");
@@ -547,23 +497,24 @@ public class CheckRulePlaywrightCrawl {
                     log.info("当前页面为常规页面");
                     scrollToBottom(listPage, scrollCount);
                 }
-                // 匹配区块
+                // 匹配区块,仅支持单指令,不需要pagePaser.parse解析
                 List<Locator> locators = listPage.locator(listRuleNode.getPageMatch()).all();
                 log.info("locators 数量: {}", locators.size());
                 // 遍历每个区块
                 for (Locator locator: locators) {
                     totalCount++;
                     ListResult listResult = new ListResult();
-                    // 有部分情况<a>标签就是列表最外层元素,标题直接写在外层区块<a>标签上
-                    // 如果没有定义标题匹配,则尝试获取外层区块标签内的textContent
+                    // 获取标题
                     String title = null;
                     if (oConvertUtils.isNotEmpty(listRuleNode.getArticleTitleMatch())) {
-                        title = listPageLocator(listRuleNode.getArticleTitleMatch(), locator);
-                    } else {
-                        title = locator.textContent();
+                        title = listPageContentParser(listRuleNode.getArticleTitleMatch(), locator, null, RuleNodeUtil.getFiledName(ListRuleNode::getArticleTitleMatch));
                     }
                     listResult.setTitle(title);
-                    String dateStr = listPageLocator(listRuleNode.getArticleDateMatch(), locator);
+                    // 获取日期
+                    String dateStr = null;
+                    if (oConvertUtils.isNotEmpty(listRuleNode.getArticleDateMatch())) {
+                        dateStr = listPageContentParser(listRuleNode.getArticleDateMatch(), locator, null, RuleNodeUtil.getFiledName(ListRuleNode::getArticleDateMatch));
+                    }
                     Date cutDate = null;
                     if (oConvertUtils.isNotEmpty(dateStr)) {
                         try {
@@ -576,32 +527,20 @@ public class CheckRulePlaywrightCrawl {
                     } else {
                         listResult.setDate(null);
                     }
-                    // 有部分情况<a>标签就是列表最外层元素,所以需要判断最外层元素是否有href属性,如果没有才去内存取
+                    // 获取链接
                     String articleUrl = null;
-                    if (oConvertUtils.isNotEmpty(locator.getAttribute("href", getAttributeOptions))) {
-                        // 如果最外层有链接则取外层
-                        articleUrl = locator.getAttribute("href", getAttributeOptions);
-                        log.info("取定位外层href属性, articleUrl: {}", articleUrl);
-                    } else {
-                        // 否则则使用内层定位链接
-                        if (oConvertUtils.isNotEmpty(listRuleNode.getArticleUrlMatch())) {
-                            // 详情URL仅支持xpath定位方式
-                            if (!listRuleNode.getArticleUrlMatch().startsWith(PlaywrightCrawl.XPATH_LOCATOR_PREFIX)) {
-                                throw new Exception("稿件URL仅支持xpath定位");
-                            }
-                            articleUrl = locator.locator(listRuleNode.getArticleUrlMatch()).getAttribute("href", getAttributeOptions);
-                            log.info("取内层定位配置, articleUrl: {}", articleUrl);
+                    if (oConvertUtils.isNotEmpty(listRuleNode.getArticleUrlMatch())) {
+                        articleUrl = listPageContentParser(listRuleNode.getArticleUrlMatch(), locator, null, RuleNodeUtil.getFiledName(ListRuleNode::getArticleUrlMatch));
+                        // 过滤获取到的URL
+                        articleUrl = oConvertUtils.replaceBlank(articleUrl);
+                        // 判断取出的url是绝对地址还是相对地址
+                        if (oConvertUtils.isNotEmpty(articleUrl)) {
+                            // 如果是相对地址,把相对地址转换为绝对地址
+                            URI relativeUri = URI.create(articleUrl);
+                            URI currentUri = URI.create(listPage.url());
+                            URI absoluteUri = currentUri.resolve(relativeUri);
+                            articleUrl = absoluteUri.toString();
                         }
-                    }
-                    // 过滤获取到的URL
-                    articleUrl = oConvertUtils.replaceBlank(articleUrl);
-                    // 判断取出的url是绝对地址还是相对地址
-                    if (oConvertUtils.isNotEmpty(articleUrl)) {
-                        // 如果是相对地址,把相对地址转换为绝对地址
-                        URI relativeUri = URI.create(articleUrl);
-                        URI currentUri = URI.create(listPage.url());
-                        URI absoluteUri = currentUri.resolve(relativeUri);
-                        articleUrl = absoluteUri.toString();
                     }
                     listResult.setUrl(articleUrl);
                     log.info("列表条目: {}", listResult.toString());
@@ -681,7 +620,7 @@ public class CheckRulePlaywrightCrawl {
                         break;
                     }
                     // 判断下一页按钮是否可用
-                    Locator nextButton = listPage.locator(listRuleNode.getNextMatch());
+                    Locator nextButton = listPageLocatorParser(listRuleNode.getNextMatch(), null, listPage, RuleNodeUtil.getFiledName(ListRuleNode::getNextMatch));
                     if (nextButton.count() == 1) {
                         if (nextButton.isDisabled()) {
                             log.info("下一页按钮禁用,列表执行结束,停止翻");
@@ -734,11 +673,35 @@ public class CheckRulePlaywrightCrawl {
         innerHTMLOptions = new Locator.InnerHTMLOptions().setTimeout(locatorTimeout);
         getAttributeOptions = new Locator.GetAttributeOptions().setTimeout(locatorTimeout);
         navigateOptions = new Page.NavigateOptions().setTimeout(pageNavigateTimeout);
+
+        pageParser.setTextContentOptions(textContentOptions);
+        pageParser.setGetAttributeOptions(getAttributeOptions);
+        pageParser.setInnerHTMLOptions(innerHTMLOptions);
+
         JSONObject show = new JSONObject();
         String articleUrl = articleRuleNode.getCheckRuleUrl();
         if (oConvertUtils.isEmpty(articleUrl)) {
             throw new Exception("测试页URL为空");
         }
+
+        // 判断当前节点规则是否可用
+        if (oConvertUtils.isEmpty(articleRuleNode.getRuleSelectByDomainMatch())) {
+            // 1. 如果没有配置适用域名为有效
+            log.info("有效规则,规则没有适用域名");
+        } else {
+            // 2. 如果配置了适用域名,则判断是否适用于当前域名
+            // 获取当前域名
+            String tmpDomain = new URL(articleUrl).getHost();
+            if (tmpDomain.matches(articleRuleNode.getRuleSelectByDomainMatch())) {
+                // 2.1 适用于当前域名则 push 进入LinkedList,队头存放最适用的规则,通过 pop 优先使用此规则
+                log.info("有效规则,规则适配域名");
+            } else {
+                // 2.1 不适用于当前域名则不使用此规则
+                log.info("无效规则,不适配当前域名");
+                throw new RuntimeException("域名适配规则: " + articleRuleNode.getRuleSelectByDomainMatch() + ", 不适配当前域名: " + articleUrl);
+            }
+        }
+
         ArticleResult articleResult = new ArticleResult();
         try {
             // 全局配置
@@ -764,9 +727,9 @@ public class CheckRulePlaywrightCrawl {
                     }
                     // 等待加载完成
                     articlePage.waitForLoadState(LoadState.DOMCONTENTLOADED);
-                    // 如果只用waitForLoadState对于页面渲染较慢的网站无法抓取到内容
+                    // 如果只用waitForLoadState对于页面渲染较慢的网站无法抓取到内容,采取等待标志性元素探测的方式判断页面是否加载完成,此处使用稿件正文内容进行探测
                     try {
-                        articlePage.waitForSelector(articleRuleNode.getContentMatch(), waitForSelectorOptions);
+                        pageParser.waitForSelector(articleRuleNode.getContentMatch(), articlePage);
                     } catch (TimeoutError e) {
                         // 此处不做处理,页面继续执行
                         log.warn("加载详情页面未找到详情定位内容");
@@ -775,10 +738,8 @@ public class CheckRulePlaywrightCrawl {
                     scrollToBottom(articlePage, articlePageScrollPageCount);
                     // 判断是否需要点击后查看更多
                     if (oConvertUtils.isNotEmpty(articleRuleNode.getMoreButtonMatch())) {
-                        if (!articleRuleNode.getMoreButtonMatch().startsWith(PlaywrightCrawl.XPATH_LOCATOR_PREFIX)) {
-                            throw new Exception("查看更多仅支持xpath匹配方式");
-                        }
-                        articlePage.locator(articleRuleNode.getMoreButtonMatch()).click();
+                        Locator moreButton = articlePageLocatorParser(articleRuleNode.getMoreButtonMatch(), null, articlePage, RuleNodeUtil.getFiledName(ArticleRuleNode::getMoreButtonMatch));
+                        moreButton.click();
                         // 等待加载完成
                         articlePage.waitForLoadState(LoadState.DOMCONTENTLOADED);
                         // 滚动条到底
@@ -799,35 +760,64 @@ public class CheckRulePlaywrightCrawl {
                         articleResult.setDescription(articlePage.locator("//meta[@name='description']").getAttribute("content", getAttributeOptions));
                     }
                     // 按配置规则匹配内容
-                    // articleResult.setContent(articlePageLocator(articleRuleNode.getContentMatch()));
-                    // 稿件详情暂时单独处理,支持多个详情区块
-                    if (oConvertUtils.isNotEmpty(articleRuleNode.getContentMatch())) {
-                        if (!articleRuleNode.getContentMatch().startsWith(PlaywrightCrawl.XPATH_LOCATOR_PREFIX)) {
-                            throw new Exception("稿件详情只支持xpath提取规则");
-                        }
-                        List<Locator> contentLocatorList = articlePage.locator(articleRuleNode.getContentMatch()).all();
-                        List<String> contentList = contentLocatorList.stream().map(
-                                locator -> {
-                                    return locator.innerHTML(innerHTMLOptions);
-                                }
-                        ).collect(Collectors.toList());
-                        articleResult.setContent(String.join("", contentList));
+                    // 标题
+                    if (oConvertUtils.isNotEmpty(articleRuleNode.getTitleMatch())) {
+                        String title = articlePageContentParser(articleRuleNode.getTitleMatch(), null, articlePage, RuleNodeUtil.getFiledName(ArticleRuleNode::getTitleMatch));
+                        articleResult.setTitle(title);
                     }
-                    articleResult.setTopic(articlePageLocator(articleRuleNode.getTopicMatch()));
-                    articleResult.setTitle(articlePageLocator(articleRuleNode.getTitleMatch()));
-                    articleResult.setSubtitle(articlePageLocator(articleRuleNode.getSubtitleMatch()));
-                    articleResult.setDate(articlePageLocator(articleRuleNode.getDateMatch()));
-                    articleResult.setReference(articlePageLocator(articleRuleNode.getReferenceMatch()));
-                    articleResult.setSource(articlePageLocator(articleRuleNode.getSourceMatch()));
-                    articleResult.setAuthor(articlePageLocator(articleRuleNode.getAuthorMatch()));
-                    articleResult.setVisit(articlePageLocator(articleRuleNode.getVisitMatch()));
-                    articleResult.setComment(articlePageLocator(articleRuleNode.getCommentMatch()));
-                    articleResult.setCollect(articlePageLocator(articleRuleNode.getCollectMatch()));
-
+                    // 正文
+                    if (oConvertUtils.isNotEmpty(articleRuleNode.getContentMatch())) {
+                        String content = articlePageContentParser(articleRuleNode.getContentMatch(), null, articlePage, RuleNodeUtil.getFiledName(ArticleRuleNode::getContentMatch));
+                        articleResult.setContent(content);
+                    }
+                    // 时间
+                    if (oConvertUtils.isNotEmpty(articleRuleNode.getDateMatch())) {
+                        String date = articlePageContentParser(articleRuleNode.getDateMatch(), null, articlePage, RuleNodeUtil.getFiledName(ArticleRuleNode::getDateMatch));
+                        articleResult.setDate(date);
+                    }
+                    // 栏目
+                    if (oConvertUtils.isNotEmpty(articleRuleNode.getTopicMatch())) {
+                        String topic = articlePageContentParser(articleRuleNode.getTopicMatch(), null, articlePage, RuleNodeUtil.getFiledName(ArticleRuleNode::getTopicMatch));
+                        articleResult.setTopic(topic);
+                    }
+                    // 子标题(元标签)
+                    if (oConvertUtils.isNotEmpty(articleRuleNode.getSubtitleMatch())) {
+                        String subtitle = articlePageContentParser(articleRuleNode.getSubtitleMatch(), null, articlePage, RuleNodeUtil.getFiledName(ArticleRuleNode::getSubtitleMatch));
+                        articleResult.setSubtitle(subtitle);
+                    }
+                    // 来源
+                    if (oConvertUtils.isNotEmpty(articleRuleNode.getSourceMatch())) {
+                        String source = articlePageContentParser(articleRuleNode.getSourceMatch(), null, articlePage, RuleNodeUtil.getFiledName(ArticleRuleNode::getSourceMatch));
+                        articleResult.setSource(source);
+                    }
+                    // 出处
+                    if (oConvertUtils.isNotEmpty(articleRuleNode.getReferenceMatch())) {
+                        String reference = articlePageContentParser(articleRuleNode.getReferenceMatch(), null, articlePage, RuleNodeUtil.getFiledName(ArticleRuleNode::getReferenceMatch));
+                        articleResult.setReference(reference);
+                    }
+                    // 作者
+                    if (oConvertUtils.isNotEmpty(articleRuleNode.getAuthorMatch())) {
+                        String author = articlePageContentParser(articleRuleNode.getAuthorMatch(), null, articlePage, RuleNodeUtil.getFiledName(ArticleRuleNode::getAuthorMatch));
+                        articleResult.setAuthor(author);
+                    }
+                    // 访问量
+                    if (oConvertUtils.isNotEmpty(articleRuleNode.getVisitMatch())) {
+                        String visit = articlePageContentParser(articleRuleNode.getVisitMatch(), null, articlePage, RuleNodeUtil.getFiledName(ArticleRuleNode::getVisitMatch));
+                        articleResult.setVisit(visit);
+                    }
+                    // 评论量
+                    if (oConvertUtils.isNotEmpty(articleRuleNode.getCommentMatch())) {
+                        String comment = articlePageContentParser(articleRuleNode.getCommentMatch(), null, articlePage, RuleNodeUtil.getFiledName(ArticleRuleNode::getCommentMatch));
+                        articleResult.setComment(comment);
+                    }
+                    // 收藏量
+                    if (oConvertUtils.isNotEmpty(articleRuleNode.getCollectMatch())) {
+                        String collect = articlePageContentParser(articleRuleNode.getCollectMatch(), null, articlePage, RuleNodeUtil.getFiledName(ArticleRuleNode::getCollectMatch));
+                        articleResult.setCollect(collect);
+                    }
                     // log.info("稿件内容采集完成: \nurl: {} \ntitle: {} \narticleResult: {}", articleResult.getUrl(), articleResult.getTitle(), articleResult.toString());
                     log.info("稿件内容采集完成: \nurl: {} \ntitle: {} ", articleResult.getUrl(), articleResult.getTitle());
-                    // 不需要处理 articleRuleNode.getCustomConfig();
-                    // Thread.sleep(sleepTime);
+                    // 自定义配置暂时用不到 articleRuleNode.getCustomConfig();
                     articlePage.waitForTimeout(sleepTime);
                     break;
                 } catch (PlaywrightException e) {
@@ -944,6 +934,121 @@ public class CheckRulePlaywrightCrawl {
         }
         return ua;
     }
+
+    //    已经被 listPageContentParser, listPageLocatorParser 替代
+//    public String listPageLocator(String match, Locator locator) throws Exception {
+//        String result = null;
+//        if (oConvertUtils.isNotEmpty(match)) {
+//            // 判断定位方式
+//            if (match.startsWith(PlaywrightCrawl.XPATH_LOCATOR_PREFIX)) {
+//                // xpath
+//                if (oConvertUtils.isNotEmpty(locator)) {
+//                    result = locator.locator(match).textContent(textContentOptions);
+//                } else {
+//                    result = listPage.locator(match).textContent(textContentOptions);
+//                }
+//            } else if (match.startsWith(PlaywrightCrawl.REGULAR_EXPRESSION_LOCATOR_PREFIX)) {
+//                // 正则表达式,正则需要去除前缀标识才能运行
+//                String newMatcher = match.replace(PlaywrightCrawl.REGULAR_EXPRESSION_LOCATOR_PREFIX, "");
+//                Matcher matcher = Pattern.compile(newMatcher).matcher(listPage.locator("//html").innerHTML(innerHTMLOptions));
+//                if (matcher.find()) {
+//                    result = matcher.group(1);
+//                }
+//            } else {
+//                // 其他不支持
+//                throw new Exception("不支持的定位器: " + match);
+//            }
+//        }
+//        return result;
+//    }
+
+//    /**
+//     * 【弃用】已经被 articlePageContentParser 替代，
+//     * 详情页页定位器,判断使用xpath还是regex进行定位,并处理相关逻辑
+//     *
+//     * @param match
+//     * @return String
+//     * @exception Exception
+//     */
+//    public String articlePageLocator(String match) throws Exception {
+//        String result = null;
+//        if (oConvertUtils.isNotEmpty(match)) {
+//            // 判断定位方式
+//            if (match.startsWith(PlaywrightCrawl.XPATH_LOCATOR_PREFIX)) {
+//                // xpath
+//                log.info("xpath: {}", match);
+//                result = articlePage.locator(match).textContent(textContentOptions);
+//            } else if (match.startsWith(PlaywrightCrawl.REGULAR_EXPRESSION_LOCATOR_PREFIX)) {
+//                // 正则表达式,正则需要去除前缀标识才能运行
+//                String newMatch = match.replace(PlaywrightCrawl.REGULAR_EXPRESSION_LOCATOR_PREFIX, "");
+//                Matcher matcher = Pattern.compile(newMatch).matcher(articlePage.locator("//html").innerHTML(innerHTMLOptions));
+//                if (matcher.find()) {
+//                    result = matcher.group(1);
+//                    log.info("regex: {}", result);
+//                } else {
+//                    log.info("regex not find");
+//                }
+//            } else {
+//                // 其他不支持
+//                throw new Exception("不支持的定位器: " + match);
+//            }
+//        }
+//        return result;
+//    }
+
+    //    【弃用】由于不是所有字段都需要规则采集,所以停用此遍历方法
+//    public void articlePageLocator(ArticleResult articleResult, ArticleRuleNode articleRuleNode) throws Exception {
+//        Field[] fields = articleResult.getClass().getDeclaredFields();
+//        for (Field field : fields) {
+//            String result = null;
+//            String fieldName = field.getName();
+//            String matchName = fieldName + "Match";
+//            Field nodeFiled = articleRuleNode.getClass().getField(matchName);
+//            Object matchObj = nodeFiled.get(articleRuleNode);
+//            if (oConvertUtils.isNotEmpty(matchObj)) {
+//                String match = matchObj.toString();
+//                // 判断定位方式
+//                if (match.startsWith(PlaywrightCrawl.XPATH_LOCATOR_PREFIX)) {
+//                    // 判断字段
+//                    if (fieldName.equals("content")) {
+//                        // 稿件详情匹配,支持选取多个标签,然后合并
+//                        List<Locator> contentLocatorList = articlePage.locator(match).all();
+//                        List<String> contentList = contentLocatorList.stream().map(
+//                                locator -> {
+//                                    return locator.innerHTML();
+//                                }
+//                        ).collect(Collectors.toList());
+//                        result = String.join("", contentList);
+//                    } else {
+//                        // 其他匹配
+//                        result = articlePage.locator(match).textContent();
+//                    }
+//                    log.info("match is xpath: ");
+//                    log.info("match is : {}", match);
+//                    // xpath
+//
+//                    nodeFiled.set(articleRuleNode, result);
+//                } else if (match.startsWith(PlaywrightCrawl.REGULAR_EXPRESSION_LOCATOR_PREFIX)) {
+//                    log.info("match is regex: ");
+//                    // 正则表达式,正则需要去除前缀标识才能运行
+//                    String newMatch = match.replace(PlaywrightCrawl.REGULAR_EXPRESSION_LOCATOR_PREFIX, "");
+//                    log.info("match is : {}", newMatch);
+//                    Matcher matcher = Pattern.compile(newMatch).matcher(articlePage.content());
+//                    log.info("groupcount: {}", matcher.groupCount());
+//                    if (matcher.find()) {
+//                        result = matcher.group(1);
+//                        nodeFiled.set(articleRuleNode, result);
+//                        log.info("regex is find: {}", result);
+//                    } else {
+//                        log.info("regex not find");
+//                    }
+//                } else {
+//                    // 其他不支持
+//                    throw new Exception(fieldName + ": 不支持的定位器");
+//                }
+//            }
+//        }
+//    }
 
 
 }

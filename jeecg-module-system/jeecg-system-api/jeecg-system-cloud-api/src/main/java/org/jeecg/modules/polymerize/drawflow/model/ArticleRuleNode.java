@@ -20,6 +20,7 @@ public class ArticleRuleNode {
         singleUrl = obj.getString("singleUrl");
         moreButtonMatch = obj.getString("moreButtonMatch");
         topicMatch = obj.getString("topicMatch");
+        ruleSelectByDomainMatch = obj.getString("ruleSelectByDomainMatch");
         titleMatch = obj.getString("titleMatch");
         subtitleMatch = obj.getString("subtitleMatch");
         keywordsMatch = obj.getString("keywordsMatch");
@@ -56,6 +57,9 @@ public class ArticleRuleNode {
 
     /**栏目匹配*/
     public String topicMatch;
+
+    /**适用域名正则匹配*/
+    public String ruleSelectByDomainMatch;
 
     /**稿件标题匹配*/
     public String titleMatch;

@@ -95,8 +95,8 @@ public class InformationSourceRuleController extends JeecgController<Information
     public Result<String> configureRule(@RequestBody String jsonRequest) {
         log.info(jsonRequest);
         // 过滤数据中的换行符
-        String jsonString = jsonRequest.replace("\\n", "");
-        JSONObject jSONObject = JSON.parseObject(jsonString);
+        // String jsonString = jsonRequest.replace("\\n", "");
+        JSONObject jSONObject = JSON.parseObject(jsonRequest);
         // JSONObject jSONObject = JSON.parseObject(jsonRequest);
         // 信源ID
         String informationSourceId = jSONObject.getString("informationSourceId");
