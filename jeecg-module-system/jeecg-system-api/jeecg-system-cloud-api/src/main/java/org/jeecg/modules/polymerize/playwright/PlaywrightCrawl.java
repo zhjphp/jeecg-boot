@@ -278,7 +278,7 @@ public class PlaywrightCrawl {
      * @param restoreOriginalPage
      * @throws Exception
      */
-    public void createPage(boolean restoreOriginalPage) throws Exception {
+    public void createPage(boolean restoreOriginalPage) throws RuntimeException {
         log.info("执行createPage()");
         omsLogger.info(logThreadId() + "执行createPage()");
         // 已经打开的页面
@@ -330,7 +330,8 @@ public class PlaywrightCrawl {
             omsLogger.info(logThreadId() + "准备恢复原有listPage页面: {}", currentListPageUrl);
             // 恢复原有页面
             if (oConvertUtils.isNotEmpty(currentListPageUrl)) {
-                listPage.navigate(currentListPageUrl, navigateOptions);
+                Response response = listPage.navigate(currentListPageUrl, navigateOptions);
+                checkResponse(response, currentListPageUrl);
                 waitForPageLoaded(listPage);
                 log.info("恢复原有listPage: {}", currentListPageUrl);
                 omsLogger.info(logThreadId() + "恢复原有listPage: {}", currentListPageUrl);
@@ -345,7 +346,8 @@ public class PlaywrightCrawl {
             omsLogger.info(logThreadId() + "准备恢复原有articlePage页面: {}", currentArticlePageUrl);
             // 恢复原有页面
             if (oConvertUtils.isNotEmpty(currentArticlePageUrl)) {
-                articlePage.navigate(currentArticlePageUrl, navigateOptions);
+                Response response = articlePage.navigate(currentArticlePageUrl, navigateOptions);
+                checkResponse(response, currentArticlePageUrl);
                 waitForPageLoaded(articlePage);
                 log.info("恢复原有articlePage: {}", currentArticlePageUrl);
                 omsLogger.info(logThreadId() + "恢复原有articlePage: {}", currentArticlePageUrl);
@@ -409,56 +411,61 @@ public class PlaywrightCrawl {
         // 取出列表对应的详情节点规则
         List<ArticleRuleNode> articleRuleNodeList = new ArrayList<>();
         List<String> childIdList = listNode.getChild();
-        if (childIdList.size() > 0) {
-            // 遍历取出对应的详情节点
-            for (int i = 0; i < childIdList.size(); i++) {
-                // 取出详情节点ID
-                String articleNodeId = childIdList.get(i);
-                // 取出详情节点
-                DrawflowNode articleNode = drawflow.getNode(articleNodeId);
-                JSONObject articleObj = articleNode.getData();
-                ArticleRuleNode articleRuleNode = new ArticleRuleNode(articleObj);
-                articleRuleNodeList.add(articleRuleNode);
-            }
-        } else {
-            // 如果没有定义详情规则,不执行详情节点
-        }
+        if (oConvertUtils.isNotEmpty(childIdList)) {
+            if (childIdList.size() > 0) {
+                // 遍历取出对应的详情节点
+                for (int i = 0; i < childIdList.size(); i++) {
+                    // 取出详情节点ID
+                    String articleNodeId = childIdList.get(i);
+                    // 取出详情节点
+                    DrawflowNode articleNode = drawflow.getNode(articleNodeId);
+                    JSONObject articleObj = articleNode.getData();
+                    ArticleRuleNode articleRuleNode = new ArticleRuleNode(articleObj);
+                    articleRuleNodeList.add(articleRuleNode);
+                }
 
-        // 开始按url爬取列表页
-        for (String startUrl: startUrsList) {
-            // 超时重试一次
-            int tries = 0;
-            while (tries < retryTimes) {
-                try {
-                    // 打开页面
-                    Response response = listPage.navigate(startUrl, navigateOptions);
-                    log.info("开始采集列表页: {}", startUrl);
-                    omsLogger.info(logThreadId() + "开始采集列表页: {}", startUrl);
-                    checkResponse(response, startUrl);
-                    // 采集列表
-                    getList(listRuleNode, articleRuleNodeList);
-                    break;
-                } catch (PlaywrightException e) {
-                    log.error(listPage.url() + ": " + e.getMessage());
-                    omsLogger.error(logThreadId() + listPage.url() + ": " + e.getMessage());
-                    if (e.getClass().getName().equals("com.microsoft.playwright.TimeoutError") || e.getMessage().contains("net::ERR_NAME_NOT_RESOLVED") || e.getMessage().contains("net::ERR_CONNECTION_TIMED_OUT")) {
-                        tries++;
-                        if (tries == retryTimes) {
-                            log.error("{},尝试请求 {} 次失败", listPage.url(), tries);
-                            omsLogger.error(logThreadId() + "{},尝试请求 {} 次失败", listPage.url(), tries);
-                            throw e;
+                // 开始按url爬取列表页
+                for (String startUrl: startUrsList) {
+                    // 超时重试一次
+                    int tries = 0;
+                    while (tries < retryTimes) {
+                        try {
+                            // 打开页面
+                            Response response = listPage.navigate(startUrl, navigateOptions);
+                            log.info("开始采集列表页: {}", startUrl);
+                            omsLogger.info(logThreadId() + "开始采集列表页: {}", startUrl);
+                            checkResponse(response, startUrl);
+                            waitForPageLoaded(listPage);
+                            // 采集列表
+                            getList(listRuleNode, articleRuleNodeList);
+                            break;
+                        } catch (PlaywrightException e) {
+                            log.error(listPage.url() + ": " + e.getMessage());
+                            omsLogger.error(logThreadId() + listPage.url() + ": " + e.getMessage());
+                            if (e.getClass().getName().equals("com.microsoft.playwright.TimeoutError") || e.getMessage().contains("net::ERR_NAME_NOT_RESOLVED") || e.getMessage().contains("net::ERR_CONNECTION_TIMED_OUT") || e.getMessage().contains("net::ERR_CONNECTION_REFUSED")) {
+                                if (tries == retryTimes) {
+                                    log.error("{},尝试请求 {} 次失败", listPage.url(), tries);
+                                    omsLogger.error(logThreadId() + "{},尝试请求 {} 次失败", listPage.url(), tries);
+                                    throw e;
+                                }
+                                log.info("更换代理IP和UA,尝试重新请求: {}", listPage.url());
+                                omsLogger.error(logThreadId() + "更换代理IP和UA,尝试重新请求: {}", listPage.url());
+                                // 更换代理IP和UA
+                                createPage(false);
+                                tries++;
+                            } else {
+                                throw e;
+                            }
                         }
-                        log.info("更换代理IP和UA,尝试重新请求: {}", listPage.url());
-                        omsLogger.error(logThreadId() + "更换代理IP和UA,尝试重新请求: {}", listPage.url());
-                        // 更换代理IP和UA
-                        createPage(true);
-                    } else {
-                        throw e;
                     }
                 }
+            } else {
+                // 如果没有定义详情规则,不执行详情节点
             }
+        } else {
+            omsLogger.error(logThreadId() + "listNode child java.lang.NullPointerException: {}", listNode.toString());
+            throw new NullPointerException(logThreadId() + "listNode child java.lang.NullPointerException: " + listNode.toString());
         }
-
     }
 
     private void waitForPageLoaded(Page page) {
@@ -507,7 +514,7 @@ public class PlaywrightCrawl {
      * @param pageCount
      * @param bottomMatch
      */
-    private void waterfallScrollToBottom(Page page, int pageCount, String bottomMatch, String pageMatch, String moreMatch) {
+    private void waterfallScrollToBottom(Page page, Integer pageCount, String bottomMatch, String pageMatch, String moreMatch) {
         Object scrollHeight = page.evaluate(
                 "() => document.documentElement.scrollHeight"
         );
@@ -618,6 +625,8 @@ public class PlaywrightCrawl {
      * @throws Exception
      */
     public void getList(ListRuleNode listRuleNode, List<ArticleRuleNode> articleRuleNodeList) throws Exception {
+        // 超时重试一次
+        int tries = 0;
         // 获取最大翻页深度(总页数),如果没有设定总页数,则默认只取第一页内容
         int totalPage = 1;
         if (oConvertUtils.isNotEmpty(listRuleNode.getPageDepth())) {
@@ -628,7 +637,11 @@ public class PlaywrightCrawl {
             // 其次判断总页数匹配
             try {
                 String tmpTotalPage = listPageContentParser(listRuleNode.getTotalPageMatch(), null, listPage, RuleNodeUtil.getFiledName(ListRuleNode::getTotalPageMatch));
-                totalPage = Integer.parseInt(tmpTotalPage);
+                try {
+                    totalPage = Integer.parseInt(tmpTotalPage);
+                } catch (RuntimeException e) {
+                    throw new RuntimeException("总页数匹配错误: " + e.getMessage());
+                }
             } catch (TimeoutError e) {
                 log.warn("没有匹配到总页数,默认只有一页");
                 omsLogger.warn("没有匹配到总页数,默认只有一页");
@@ -675,6 +688,7 @@ public class PlaywrightCrawl {
         // 判断稿件日期是否符合目标区间,是否翻页继续爬取
         while ( (currentPage < totalPage) && isPageDown ) {
             log.info("当前页序号: {}", currentPage);
+            omsLogger.info("当前页序号: {}", currentPage);
             // 一页列表结果
             List<ListResult> resultList = new ArrayList<>();
             // 匹配区块
@@ -838,13 +852,31 @@ public class PlaywrightCrawl {
                 }
                 // 判断下一页按钮是否可用
                 Locator nextButton = listPageLocatorParser(listRuleNode.getNextMatch(), null, listPage, RuleNodeUtil.getFiledName(ListRuleNode::getNextMatch));
+                String tmpCurrentUrl = listPage.url();
+
                 if (nextButton.count() == 1) {
                     if (nextButton.isDisabled()) {
                         log.info("下一页按钮禁用,列表执行结束,停止翻页");
                         break;
                     } else {
                         log.info("点击下一页");
-                        nextButton.click();
+                        String tmpPreUrl = listPage.url();
+                        try {
+                            nextButton.click();
+                        } catch (PlaywrightException e) {
+                            if (e.getClass().getName().equals("com.microsoft.playwright.TimeoutError") || e.getMessage().contains("net::ERR_NAME_NOT_RESOLVED") || e.getMessage().contains("net::ERR_CONNECTION_TIMED_OUT") || e.getMessage().contains("net::ERR_CONNECTION_REFUSED")) {
+                                log.warn("点击下一页错误,等待重试: {}, {}", listPage.url(), e.getMessage());
+                                omsLogger.warn(logThreadId() + "点击下一页错误,等待重试: {}, {}", listPage.url(), e.getMessage());
+                                // 关闭页面,更换ua和代理ip
+                                createPage(false);
+                                // 重新打开列表页
+                                Response response = listPage.navigate(tmpPreUrl, navigateOptions);
+                                checkResponse(response, tmpPreUrl);
+                                waitForPageLoaded(listPage);
+                                // 重新执行点击事件
+                                nextButton.click();
+                            }
+                        }
                         currentPage++;
                         listPage.waitForTimeout(sleepTime);
                     }
@@ -1004,12 +1036,8 @@ public class PlaywrightCrawl {
                         omsLogger.info(logThreadId() + "开始匹配规则数据, {}", articleUrl);
                         // 按配固定则匹配内容
                         articleResult.setUrl(articleUrl);
-                        if (articlePage.locator("//meta[@name='keywords']").count() == 1) {
-                            articleResult.setKeywords(articlePage.locator("//meta[@name='keywords']").getAttribute("content", getAttributeOptions));
-                        }
-                        if (articlePage.locator("//meta[@name='description']").count() == 1) {
-                            articleResult.setDescription(articlePage.locator("//meta[@name='description']").getAttribute("content", getAttributeOptions));
-                        }
+                        // 错误原因
+                        String reason = new String("");
                         // 按配置规则匹配内容
                         // 标题
                         if (oConvertUtils.isNotEmpty(articleRuleNode.getTitleMatch())) {
@@ -1021,51 +1049,116 @@ public class PlaywrightCrawl {
                             String content = articlePageContentParser(articleRuleNode.getContentMatch(), null, articlePage, RuleNodeUtil.getFiledName(ArticleRuleNode::getContentMatch));
                             articleResult.setContent(content);
                         }
-                        // 时间
-                        if (oConvertUtils.isNotEmpty(articleRuleNode.getDateMatch())) {
-                            String date = articlePageContentParser(articleRuleNode.getDateMatch(), null, articlePage, RuleNodeUtil.getFiledName(ArticleRuleNode::getDateMatch));
-                            articleResult.setDate(date);
+
+                        try {
+                            // 时间
+                            if (oConvertUtils.isNotEmpty(articleRuleNode.getDateMatch())) {
+                                String date = articlePageContentParser(articleRuleNode.getDateMatch(), null, articlePage, RuleNodeUtil.getFiledName(ArticleRuleNode::getDateMatch));
+                                articleResult.setDate(date);
+                            }
+                        } catch (TimeoutError e) {
+                            // 容忍几个不重要字段的错误
+                            reason = reason + "\n" + e.getMessage();
                         }
-                        // 栏目
-                        if (oConvertUtils.isNotEmpty(articleRuleNode.getTopicMatch())) {
-                            String topic = articlePageContentParser(articleRuleNode.getTopicMatch(), null, articlePage, RuleNodeUtil.getFiledName(ArticleRuleNode::getTopicMatch));
-                            articleResult.setTopic(topic);
+
+                        try {
+                            // 栏目
+                            if (oConvertUtils.isNotEmpty(articleRuleNode.getTopicMatch())) {
+                                String topic = articlePageContentParser(articleRuleNode.getTopicMatch(), null, articlePage, RuleNodeUtil.getFiledName(ArticleRuleNode::getKeywordsMatch));
+                                articleResult.setTopic(topic);
+                            }
+                        } catch (TimeoutError e) {
+                            reason = reason + "\n" + e.getMessage();
                         }
-                        // 子标题(元标签)
-                        if (oConvertUtils.isNotEmpty(articleRuleNode.getSubtitleMatch())) {
-                            String subtitle = articlePageContentParser(articleRuleNode.getSubtitleMatch(), null, articlePage, RuleNodeUtil.getFiledName(ArticleRuleNode::getSubtitleMatch));
-                            articleResult.setSubtitle(subtitle);
+
+                        try {
+                            // 关键词
+                            if (oConvertUtils.isNotEmpty(articleRuleNode.getKeywordsMatch())) {
+                                String keywords = articlePageContentParser(articleRuleNode.getKeywordsMatch(), null, articlePage, RuleNodeUtil.getFiledName(ArticleRuleNode::getTopicMatch));
+                                articleResult.setKeywords(keywords);
+                            }
+                        } catch (TimeoutError e) {
+                            reason = reason + "\n" + e.getMessage();
                         }
-                        // 来源
-                        if (oConvertUtils.isNotEmpty(articleRuleNode.getSourceMatch())) {
-                            String source = articlePageContentParser(articleRuleNode.getSourceMatch(), null, articlePage, RuleNodeUtil.getFiledName(ArticleRuleNode::getSourceMatch));
-                            articleResult.setSource(source);
+
+                        try {
+                            // 描述
+                            if (oConvertUtils.isNotEmpty(articleRuleNode.getDescriptionMatch())) {
+                                String description = articlePageContentParser(articleRuleNode.getDescriptionMatch(), null, articlePage, RuleNodeUtil.getFiledName(ArticleRuleNode::getDescriptionMatch));
+                                articleResult.setDescription(description);
+                            }
+                        } catch (TimeoutError e) {
+                            reason = reason + "\n" + e.getMessage();
                         }
-                        // 出处
-                        if (oConvertUtils.isNotEmpty(articleRuleNode.getReferenceMatch())) {
-                            String reference = articlePageContentParser(articleRuleNode.getReferenceMatch(), null, articlePage, RuleNodeUtil.getFiledName(ArticleRuleNode::getReferenceMatch));
-                            articleResult.setReference(reference);
+
+                        try {
+                            // 子标题(元标签)
+                            if (oConvertUtils.isNotEmpty(articleRuleNode.getSubtitleMatch())) {
+                                String subtitle = articlePageContentParser(articleRuleNode.getSubtitleMatch(), null, articlePage, RuleNodeUtil.getFiledName(ArticleRuleNode::getSubtitleMatch));
+                                articleResult.setSubtitle(subtitle);
+                            }
+                        } catch (TimeoutError e) {
+                            reason = reason + "\n" + e.getMessage();
                         }
-                        // 作者
-                        if (oConvertUtils.isNotEmpty(articleRuleNode.getAuthorMatch())) {
-                            String author = articlePageContentParser(articleRuleNode.getAuthorMatch(), null, articlePage, RuleNodeUtil.getFiledName(ArticleRuleNode::getAuthorMatch));
-                            articleResult.setAuthor(author);
+
+                        try {
+                            // 来源
+                            if (oConvertUtils.isNotEmpty(articleRuleNode.getSourceMatch())) {
+                                String source = articlePageContentParser(articleRuleNode.getSourceMatch(), null, articlePage, RuleNodeUtil.getFiledName(ArticleRuleNode::getSourceMatch));
+                                articleResult.setSource(source);
+                            }
+                        } catch (TimeoutError e) {
+                            reason = reason + "\n" + e.getMessage();
                         }
-                        // 访问量
-                        if (oConvertUtils.isNotEmpty(articleRuleNode.getVisitMatch())) {
-                            String visit = articlePageContentParser(articleRuleNode.getVisitMatch(), null, articlePage, RuleNodeUtil.getFiledName(ArticleRuleNode::getVisitMatch));
-                            articleResult.setVisit(visit);
+
+                        try {
+                            // 出处
+                            if (oConvertUtils.isNotEmpty(articleRuleNode.getReferenceMatch())) {
+                                String reference = articlePageContentParser(articleRuleNode.getReferenceMatch(), null, articlePage, RuleNodeUtil.getFiledName(ArticleRuleNode::getReferenceMatch));
+                                articleResult.setReference(reference);
+                            }
+                        } catch (TimeoutError e) {
+                            reason = reason + "\n" + e.getMessage();
                         }
-                        // 评论量
-                        if (oConvertUtils.isNotEmpty(articleRuleNode.getCommentMatch())) {
-                            String comment = articlePageContentParser(articleRuleNode.getCommentMatch(), null, articlePage, RuleNodeUtil.getFiledName(ArticleRuleNode::getCommentMatch));
-                            articleResult.setComment(comment);
+
+                        try {
+                            // 作者
+                            if (oConvertUtils.isNotEmpty(articleRuleNode.getAuthorMatch())) {
+                                String author = articlePageContentParser(articleRuleNode.getAuthorMatch(), null, articlePage, RuleNodeUtil.getFiledName(ArticleRuleNode::getAuthorMatch));
+                                articleResult.setAuthor(author);
+                            }
+                        } catch (TimeoutError e) {
+                            reason = reason + "\n" + e.getMessage();
                         }
-                        // 收藏量
-                        if (oConvertUtils.isNotEmpty(articleRuleNode.getCollectMatch())) {
-                            String collect = articlePageContentParser(articleRuleNode.getCollectMatch(), null, articlePage, RuleNodeUtil.getFiledName(ArticleRuleNode::getCollectMatch));
-                            articleResult.setCollect(collect);
+
+                        try {
+                            // 访问量
+                            if (oConvertUtils.isNotEmpty(articleRuleNode.getVisitMatch())) {
+                                String visit = articlePageContentParser(articleRuleNode.getVisitMatch(), null, articlePage, RuleNodeUtil.getFiledName(ArticleRuleNode::getVisitMatch));
+                                articleResult.setVisit(visit);
+                            }
+                        } catch (TimeoutError e) {
+                            reason = reason + "\n" + e.getMessage();
                         }
+                        try {
+                            // 评论量
+                            if (oConvertUtils.isNotEmpty(articleRuleNode.getCommentMatch())) {
+                                String comment = articlePageContentParser(articleRuleNode.getCommentMatch(), null, articlePage, RuleNodeUtil.getFiledName(ArticleRuleNode::getCommentMatch));
+                                articleResult.setComment(comment);
+                            }
+                        } catch (TimeoutError e) {
+                            reason = reason + "\n" + e.getMessage();
+                        }
+                        try {
+                            // 收藏量
+                            if (oConvertUtils.isNotEmpty(articleRuleNode.getCollectMatch())) {
+                                String collect = articlePageContentParser(articleRuleNode.getCollectMatch(), null, articlePage, RuleNodeUtil.getFiledName(ArticleRuleNode::getCollectMatch));
+                                articleResult.setCollect(collect);
+                            }
+                        } catch (TimeoutError e) {
+                            reason = reason + "\n" + e.getMessage();
+                        }
+                        articleResult.setReason(reason);
                         // 没需求,不处理 articleRuleNode.getCustomConfig();
                         // log.info("稿件内容采集完成: \nurl: {} \ntitle: {} \narticleResult: {}", articleResult.getUrl(), articleResult.getTitle(), articleResult.toString());
                         log.info("稿件内容采集完成: \nurl: {} \ntitle: {} ", articleResult.getUrl(), articleResult.getTitle());
@@ -1122,6 +1215,10 @@ public class PlaywrightCrawl {
                     articleErrorDataProcess(articleResult, e.getMessage());
                     throw e;
                 }
+            } catch (RuntimeException e) {
+                omsLogger.error("稿件详情采集失败: {}", articleUrl);
+                log.error("稿件详情采集失败: {}", articleUrl);
+                throw e;
             }
         }
         return articleResult;
@@ -1140,7 +1237,11 @@ public class PlaywrightCrawl {
         // log.info("开始处理部分数据:");
         if (oConvertUtils.isNotEmpty(articleResult.getDate())) {
             Date cutDate = DateUtils.cutDate(articleResult.getDate());
-            articleResult.setDate(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(cutDate));
+            if (oConvertUtils.isNotEmpty(cutDate)) {
+                articleResult.setDate(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(cutDate));
+            } else {
+                articleResult.setDate(null);
+            }
         }
         // 3.存储数据
         log.info("开始存储数据:");
@@ -1318,30 +1419,36 @@ public class PlaywrightCrawl {
         return ua;
     }
 
-    @Override
-    protected void finalize() throws Throwable {
-        log.info("PlaywrightCrawl 执行 finalize");
-        super.finalize();
-        if (oConvertUtils.isNotEmpty(listPage)) {
-            listPage.close();
-        }
-        if (oConvertUtils.isNotEmpty(articlePage)) {
-            articlePage.close();
-        }
-        if (oConvertUtils.isNotEmpty(browserContext)) {
-            browserContext.close();
-        }
-        if (oConvertUtils.isNotEmpty(browser)) {
-            browser.close();
-        }
-        if (oConvertUtils.isNotEmpty(playwright)) {
-            playwright.close();
-        }
-    }
-
     private String logThreadId() {
         return "[ThreadId: " + Thread.currentThread().getName() + "]  ";
     }
+
+//    @Override
+//    protected void finalize() throws Throwable {
+//        log.info("PlaywrightCrawl 执行 finalize");
+//        omsLogger.info(logThreadId() + "PlaywrightCrawl 执行 finalize");
+//        super.finalize();
+//        if (oConvertUtils.isNotEmpty(listPage)) {
+//            listPage.close();
+//            omsLogger.info(logThreadId() + "PlaywrightCrawl finalize listPage.close");
+//        }
+//        if (oConvertUtils.isNotEmpty(articlePage)) {
+//            articlePage.close();
+//            omsLogger.info(logThreadId() + "PlaywrightCrawl finalize articlePage.close");
+//        }
+//        if (oConvertUtils.isNotEmpty(browserContext)) {
+//            browserContext.close();
+//            omsLogger.info(logThreadId() + "PlaywrightCrawl finalize browserContext.close");
+//        }
+//        if (oConvertUtils.isNotEmpty(browser)) {
+//            browser.close();
+//            omsLogger.info(logThreadId() + "PlaywrightCrawl finalize browser.close");
+//        }
+//        if (oConvertUtils.isNotEmpty(playwright)) {
+//            playwright.close();
+//            omsLogger.info(logThreadId() + "PlaywrightCrawl finalize playwright.close");
+//        }
+//    }
 
 //    /**
 //     * 【弃用】,被articlePageContentParser,listPageLocatorParser替代

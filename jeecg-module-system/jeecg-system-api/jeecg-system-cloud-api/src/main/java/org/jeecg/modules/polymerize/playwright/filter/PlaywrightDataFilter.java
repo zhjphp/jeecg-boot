@@ -1,7 +1,7 @@
 package org.jeecg.modules.polymerize.playwright.filter;
 
 import org.jeecg.common.util.oConvertUtils;
-import org.jsoup.Jsoup;
+    import org.jsoup.Jsoup;
 import org.jsoup.safety.Cleaner;
 import org.jsoup.safety.Safelist;
 
@@ -23,7 +23,7 @@ public class PlaywrightDataFilter {
         if (oConvertUtils.isEmpty(content)) {
             return null;
         }
-        Safelist safelist = Safelist.none().addTags("p","img").addAttributes("img", "src").addProtocols("img", "src", "http", "https");
+        Safelist safelist = Safelist.none().addTags("p", "img", "video").addAttributes("img", "src").addAttributes("video", "src").addProtocols("img", "src", "http", "https").addProtocols("video", "src", "http", "https");
         return Jsoup.clean(content, baseUri, safelist);
     }
 

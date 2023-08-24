@@ -60,6 +60,7 @@ public class TmpCrawlData implements Serializable {
         informationsourceDomain = articleResult.getInformationSourceDomain();
         customTags = articleResult.getCustomTags();
         topic = articleResult.getTopic();
+        reason = articleResult.getReason();
     }
 
 	/**主键*/
@@ -155,7 +156,7 @@ public class TmpCrawlData implements Serializable {
     @Excel(name = "错误数据", width = 15)
     @ApiModelProperty(value = "错误数据")
     private java.lang.Integer errorCode;
-    /**任务调度ID*/
+    /**错误原因*/
     @Excel(name = "错误原因", width = 15)
     @ApiModelProperty(value = "错误原因")
     private String reason;

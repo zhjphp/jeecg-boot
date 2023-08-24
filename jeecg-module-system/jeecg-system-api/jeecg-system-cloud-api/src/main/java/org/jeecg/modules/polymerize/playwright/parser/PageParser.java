@@ -17,6 +17,10 @@ import java.util.regex.Pattern;
  * @description: TODO
  * @author: wayne
  * @date 2023/8/10 15:07
+ *
+ * TODO
+ * 1.开发更多表达式解析,例如字符串拼接,字符串替换,字符截取
+ *
  */
 @Data
 @Component
@@ -254,6 +258,7 @@ public class PageParser {
                             log.info("regex : {}", result);
                         } else {
                             log.info("regex not find");
+                            result = null;
                         }
                     } else {
                         log.warn("regex localContent 为 null, 跳过执行");

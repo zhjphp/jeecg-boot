@@ -421,7 +421,11 @@ public class CheckRulePlaywrightCrawl {
                 // 其次判断总页数匹配
                 try {
                     String tmpTotalPage = listPageContentParser(listRuleNode.getTotalPageMatch(), null, listPage, RuleNodeUtil.getFiledName(ListRuleNode::getTotalPageMatch));
-                    totalPage = Integer.parseInt(tmpTotalPage);
+                    try {
+                        totalPage = Integer.parseInt(tmpTotalPage);
+                    } catch (RuntimeException e) {
+                        throw new RuntimeException("总页数匹配错误: " +  e.getMessage());
+                    }
                 } catch (TimeoutError e) {
                     log.warn("没有匹配到总页数,默认只有一页");
                 }
@@ -753,12 +757,6 @@ public class CheckRulePlaywrightCrawl {
                     }
                     // 按配固定则匹配内容
                     articleResult.setUrl(articleUrl);
-                    if (articlePage.locator("//meta[@name='keywords']").count() == 1) {
-                        articleResult.setKeywords(articlePage.locator("//meta[@name='keywords']").getAttribute("content", getAttributeOptions));
-                    }
-                    if (articlePage.locator("//meta[@name='description']").count() == 1) {
-                        articleResult.setDescription(articlePage.locator("//meta[@name='description']").getAttribute("content", getAttributeOptions));
-                    }
                     // 按配置规则匹配内容
                     // 标题
                     if (oConvertUtils.isNotEmpty(articleRuleNode.getTitleMatch())) {
@@ -789,6 +787,16 @@ public class CheckRulePlaywrightCrawl {
                     if (oConvertUtils.isNotEmpty(articleRuleNode.getSourceMatch())) {
                         String source = articlePageContentParser(articleRuleNode.getSourceMatch(), null, articlePage, RuleNodeUtil.getFiledName(ArticleRuleNode::getSourceMatch));
                         articleResult.setSource(source);
+                    }
+                    // 关键词
+                    if (oConvertUtils.isNotEmpty(articleRuleNode.getKeywordsMatch())) {
+                        String keywords = articlePageContentParser(articleRuleNode.getKeywordsMatch(), null, articlePage, RuleNodeUtil.getFiledName(ArticleRuleNode::getTopicMatch));
+                        articleResult.setKeywords(keywords);
+                    }
+                    // 描述
+                    if (oConvertUtils.isNotEmpty(articleRuleNode.getDescriptionMatch())) {
+                        String description = articlePageContentParser(articleRuleNode.getDescriptionMatch(), null, articlePage, RuleNodeUtil.getFiledName(ArticleRuleNode::getDescriptionMatch));
+                        articleResult.setDescription(description);
                     }
                     // 出处
                     if (oConvertUtils.isNotEmpty(articleRuleNode.getReferenceMatch())) {

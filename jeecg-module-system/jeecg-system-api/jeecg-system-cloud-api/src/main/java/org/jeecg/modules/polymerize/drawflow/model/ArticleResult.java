@@ -73,4 +73,7 @@ public class ArticleResult {
     /**稿件收藏量*/
     public String collect;
 
+    /**错误原因*/
+    public String reason;
+
 }
