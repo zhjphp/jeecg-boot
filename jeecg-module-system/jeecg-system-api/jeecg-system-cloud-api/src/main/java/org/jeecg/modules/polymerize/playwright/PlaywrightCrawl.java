@@ -442,10 +442,10 @@ public class PlaywrightCrawl {
                         } catch (PlaywrightException e) {
                             log.error(listPage.url() + ": " + e.getMessage());
                             omsLogger.error(logThreadId() + listPage.url() + ": " + e.getMessage());
-                            if (e.getClass().getName().equals("com.microsoft.playwright.TimeoutError") || e.getMessage().contains("net::ERR_NAME_NOT_RESOLVED") || e.getMessage().contains("net::ERR_CONNECTION_TIMED_OUT") || e.getMessage().contains("net::ERR_CONNECTION_REFUSED")) {
+                            if (e.getClass().getName().equals("com.microsoft.playwright.TimeoutError") || e.getMessage().contains("net::ERR_NAME_NOT_RESOLVED") || e.getMessage().contains("net::ERR_CONNECTION_TIMED_OUT") || e.getMessage().contains("net::ERR_CONNECTION_REFUSED") || e.getMessage().contains("context or browser has been closed")) {
                                 if (tries == retryTimes) {
-                                    log.error("{},尝试请求 {} 次失败", listPage.url(), tries);
-                                    omsLogger.error(logThreadId() + "{},尝试请求 {} 次失败", listPage.url(), tries);
+                                    log.error("{},尝试请求 {} 次失败, {}", listPage.url(), tries, e.getMessage());
+                                    omsLogger.error(logThreadId() + "{},尝试请求 {} 次失败, {}", listPage.url(), tries, e.getMessage());
                                     throw e;
                                 }
                                 log.info("更换代理IP和UA,尝试重新请求: {}", listPage.url());
@@ -585,7 +585,7 @@ public class PlaywrightCrawl {
                 log.info("preCount: {}", preCount);
             } while ( (totalCount > preCount) && (insure > 0) );
             log.info("页面已经到底");
-            omsLogger.info("页面已经到底");
+            omsLogger.info(logThreadId() + "页面已经到底");
         }
     }
 
@@ -640,7 +640,8 @@ public class PlaywrightCrawl {
                 try {
                     totalPage = Integer.parseInt(tmpTotalPage);
                 } catch (RuntimeException e) {
-                    throw new RuntimeException("总页数匹配错误: " + e.getMessage());
+                    omsLogger.error(logThreadId() + listPage.url() + "总页数匹配错误: " + e.getMessage());
+                    throw new RuntimeException(logThreadId() + listPage.url() + "总页数匹配错误: " + e.getMessage());
                 }
             } catch (TimeoutError e) {
                 log.warn("没有匹配到总页数,默认只有一页");
@@ -688,7 +689,7 @@ public class PlaywrightCrawl {
         // 判断稿件日期是否符合目标区间,是否翻页继续爬取
         while ( (currentPage < totalPage) && isPageDown ) {
             log.info("当前页序号: {}", currentPage);
-            omsLogger.info("当前页序号: {}", currentPage);
+            omsLogger.info(logThreadId() + "当前页序号: {}", currentPage);
             // 一页列表结果
             List<ListResult> resultList = new ArrayList<>();
             // 匹配区块
@@ -716,7 +717,8 @@ public class PlaywrightCrawl {
             List<Locator> locators = listPage.locator(listRuleNode.getPageMatch()).all();
             log.info("locators size: {}", locators.size());
             if (locators.size() == 0) {
-                throw new Exception("列表第" + currentPage + "页,没有匹配到任何内容");
+                omsLogger.error(logThreadId() + "列表第" + currentPage + "页,没有匹配到任何内容: " + listPage.url());
+                throw new Exception(logThreadId() + "列表第" + currentPage + "页,没有匹配到任何内容: " + listPage.url());
             }
             // 遍历每个区块
             for (Locator locator: locators) {
@@ -864,7 +866,7 @@ public class PlaywrightCrawl {
                         try {
                             nextButton.click();
                         } catch (PlaywrightException e) {
-                            if (e.getClass().getName().equals("com.microsoft.playwright.TimeoutError") || e.getMessage().contains("net::ERR_NAME_NOT_RESOLVED") || e.getMessage().contains("net::ERR_CONNECTION_TIMED_OUT") || e.getMessage().contains("net::ERR_CONNECTION_REFUSED")) {
+                            if (e.getClass().getName().equals("com.microsoft.playwright.TimeoutError") || e.getMessage().contains("net::ERR_NAME_NOT_RESOLVED") || e.getMessage().contains("net::ERR_CONNECTION_TIMED_OUT") || e.getMessage().contains("net::ERR_CONNECTION_REFUSED") || e.getMessage().contains("context or browser has been closed")) {
                                 log.warn("点击下一页错误,等待重试: {}, {}", listPage.url(), e.getMessage());
                                 omsLogger.warn(logThreadId() + "点击下一页错误,等待重试: {}, {}", listPage.url(), e.getMessage());
                                 // 关闭页面,更换ua和代理ip
@@ -970,7 +972,7 @@ public class PlaywrightCrawl {
                 // 1. 如果没有配置适用域名为有效
                 articleRuleNodeLink.add(listNode);
                 log.info("有效规则,没有填写域名适配规则,默认无限制 {}", listNode.toString());
-                omsLogger.info("有效规则,没有填写域名适配规则,默认无限制");
+                omsLogger.info(logThreadId() + "有效规则,没有填写域名适配规则,默认无限制");
             } else {
                 // 2. 如果配置了适用域名,则判断是否适用于当前域名
                 // 获取当前域名
@@ -979,11 +981,11 @@ public class PlaywrightCrawl {
                     // 2.1 适用于当前域名则 push 进入LinkedList,队头存放最适用的规则,通过 pop 优先使用此规则
                     articleRuleNodeLink.push(listNode);
                     log.info("有效规则,规则: {}, 适配当前域名: {}", listNode.getRuleSelectByDomainMatch(), articleUrl);
-                    omsLogger.info("有效规则,规则: {}, 适配当前域名: {}", listNode.getRuleSelectByDomainMatch(), articleUrl);
+                    omsLogger.info(logThreadId() + "有效规则,规则: {}, 适配当前域名: {}", listNode.getRuleSelectByDomainMatch(), articleUrl);
                 } else {
                     // 2.1 不适用于当前域名则不使用此规则
                     log.info("无效规则,规则: {}, 不适配当前域名: {}", listNode.getRuleSelectByDomainMatch(), articleUrl);
-                    omsLogger.info("无效规则,规则: {}, 不适配当前域名: {}", listNode.getRuleSelectByDomainMatch(), articleUrl);
+                    omsLogger.info(logThreadId() + "无效规则,规则: {}, 不适配当前域名: {}", listNode.getRuleSelectByDomainMatch(), articleUrl);
                 }
             }
         }
@@ -997,6 +999,13 @@ public class PlaywrightCrawl {
                 // pop 队头为最适合的规则
                 ArticleRuleNode articleRuleNode = articleRuleNodeLink.pop();
                 articleResult.setCustomTags(articleRuleNode.getCustomTags());
+                // 判断是否为单页采集,如果为单页采集,则忽略传入的URL,使用配置中的url
+                if (oConvertUtils.isNotEmpty(articleRuleNode.getSingleFlag()) && articleRuleNode.getSingleFlag()) {
+                    omsLogger.info(logThreadId() + "当前规则为单页采集: {}", articleUrl);
+                    log.info("当前规则为单页采集: {}", articleUrl);
+                    articleUrl = articleRuleNode.getSingleUrl();
+                }
+                articleResult.setUrl(articleUrl);
                 // 超时重试一次
                 int tries = 0;
                 while (tries < retryTimes) {
@@ -1028,14 +1037,9 @@ public class PlaywrightCrawl {
                             scrollToBottom(articlePage, articlePageScrollPageCount);
                         }
                         // 匹配内容
-                        // 判断是否为单页采集,如果为单页采集,则忽略传入的URL,使用配置中的url
-                        if (oConvertUtils.isNotEmpty(articleRuleNode.getSingleFlag()) && articleRuleNode.getSingleFlag()) {
-                            articleUrl = articleRuleNode.getSingleUrl();
-                        }
                         log.warn("开始匹配规则数据, {}", articleUrl);
                         omsLogger.info(logThreadId() + "开始匹配规则数据, {}", articleUrl);
                         // 按配固定则匹配内容
-                        articleResult.setUrl(articleUrl);
                         // 错误原因
                         String reason = new String("");
                         // 按配置规则匹配内容
@@ -1170,11 +1174,12 @@ public class PlaywrightCrawl {
                         break;
                     } catch (PlaywrightException e) {
                         // 如果捕获PlaywrightException的全部错误,则无法通过job控制台杀死任务,通过对playwright的TimeoutError与net::ERR_NAME_NOT_RESOLVED错误类型判断,进行选择性抛出与重试
-                        if (e.getClass().getName().equals("com.microsoft.playwright.TimeoutError") || e.getMessage().contains("net::ERR_NAME_NOT_RESOLVED") || e.getMessage().contains("net::ERR_CONNECTION_TIMED_OUT") || e.getMessage().contains("net::ERR_CONNECTION_REFUSED")) {
+                        if (e.getClass().getName().equals("com.microsoft.playwright.TimeoutError") || e.getMessage().contains("net::ERR_NAME_NOT_RESOLVED") || e.getMessage().contains("net::ERR_CONNECTION_TIMED_OUT") || e.getMessage().contains("net::ERR_CONNECTION_REFUSED") || e.getMessage().contains("context or browser has been closed")) {
                             log.error("{} : {}", articleUrl, e.getMessage());
                             omsLogger.error(logThreadId() + "尝试错误: {} : {}", articleUrl, e.getMessage());
                             tries++;
                             log.error("当前尝试次数: {}", tries);
+                            omsLogger.error(logThreadId() + "当前尝试次数: {}", tries);
                             if (tries == retryTimes) {
                                 log.error("{},尝试请求 {} 次失败", articleUrl, tries);
                                 omsLogger.error(logThreadId() + "{},尝试请求 {} 次失败", articleUrl, tries);
@@ -1197,10 +1202,10 @@ public class PlaywrightCrawl {
                 log.error("尝试更换详情匹配规则");
                 omsLogger.error(logThreadId() + "尝试更换详情匹配规则");
                 // 如果捕获PlaywrightException的全部错误,则无法通过job控制台杀死任务,通过对playwright的TimeoutError与net::ERR_NAME_NOT_RESOLVED错误类型判断,进行选择性抛出与重试
-                if (e.getClass().getName().equals("com.microsoft.playwright.TimeoutError") || e.getMessage().contains("net::ERR_NAME_NOT_RESOLVED") || e.getMessage().contains("net::ERR_CONNECTION_TIMED_OUT") || e.getMessage().contains("net::ERR_CONNECTION_REFUSED")) {
+                if (e.getClass().getName().equals("com.microsoft.playwright.TimeoutError") || e.getMessage().contains("net::ERR_NAME_NOT_RESOLVED") || e.getMessage().contains("net::ERR_CONNECTION_TIMED_OUT") || e.getMessage().contains("net::ERR_CONNECTION_REFUSED") ) {
                     if (articleRuleNodeLink.size() == 0) {
                         log.info("没有更多匹配规则");
-                        omsLogger.error("没有更多匹配规则");
+                        omsLogger.error(logThreadId() + "没有更多匹配规则");
                         // 没有下一个规则,则跳出循环
                         changeRule = false;
                         // 记录丢弃数据
@@ -1211,6 +1216,11 @@ public class PlaywrightCrawl {
                         log.info("更换下一个详情规则: {}", articleUrl);
                         omsLogger.info(logThreadId() + "更换下一个详情规则: {}", articleUrl);
                     }
+                } else if ( e.getMessage().contains("context or browser has been closed") ) {
+                    log.info("context or browser has been closed bug");
+                    omsLogger.error(logThreadId() + "context or browser has been closed bug");
+                    articleErrorDataProcess(articleResult, e.getMessage());
+                    break;
                 } else {
                     articleErrorDataProcess(articleResult, e.getMessage());
                     throw e;
@@ -1251,7 +1261,7 @@ public class PlaywrightCrawl {
             log.info("数据存储成功: ", articleResult.getUrl());
             omsLogger.info(logThreadId() + "数据存储成功: ", articleResult.getUrl());
         } else {
-            throw new RuntimeException("数据存储失败: " + articleResult.getUrl());
+            throw new RuntimeException(logThreadId() + "数据存储失败: " + articleResult.getUrl());
         }
     }
 
@@ -1283,7 +1293,7 @@ public class PlaywrightCrawl {
             log.info("列表错误数据存储成功: {}, {}", url, reason);
             omsLogger.info(logThreadId() + "列表错误数据存储成功: {}, {}", url, reason);
         } else {
-            throw new RuntimeException("列表错误数据存储失败: " + url);
+            throw new RuntimeException(logThreadId() + "列表错误数据存储失败: " + url);
         }
     }
 
@@ -1310,7 +1320,7 @@ public class PlaywrightCrawl {
             log.info("稿件错误数据存储成功: {}", articleResult.getUrl());
             omsLogger.info(logThreadId() + "稿件错误数据存储成功: {}", articleResult.getUrl());
         } else {
-            throw new RuntimeException("稿件错误数据存储失败: " + articleResult.getUrl());
+            throw new RuntimeException(logThreadId() + "稿件错误数据存储失败: " + articleResult.getUrl());
         }
     }
 
@@ -1367,12 +1377,12 @@ public class PlaywrightCrawl {
                 omsLogger.info(logThreadId() + "响应码: {}, {}", response.status(), url);
                 return true;
             } else {
-                throw new TimeoutError(url + "请求失败,response.status: " + response.status());
+                throw new TimeoutError(logThreadId() + ", " + url + "请求失败,response.status: " + response.status());
             }
         } else {
             log.error("checkResponse Response 为空, response: {}", response);
             omsLogger.error("checkResponse Response 为空, response: {}", response);
-            throw new TimeoutError(url + "Response 为空 null");
+            throw new TimeoutError(logThreadId() + ", " + url + "Response 为空 null");
         }
     }
 
