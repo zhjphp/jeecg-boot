@@ -2,6 +2,8 @@ package org.jeecg.modules.polymerize.service;
 
 import com.alibaba.fastjson.JSONObject;
 import org.jeecg.common.exception.JeecgBootException;
+import org.jeecg.modules.polymerize.drawflow.model.ApiArticleRuleNode;
+import org.jeecg.modules.polymerize.drawflow.model.ApiListRuleNode;
 import org.jeecg.modules.polymerize.drawflow.model.ArticleRuleNode;
 import org.jeecg.modules.polymerize.drawflow.model.ListRuleNode;
 import org.jeecg.modules.polymerize.entity.InformationSourceRule;
@@ -20,5 +22,9 @@ public interface IInformationSourceRuleService extends IService<InformationSourc
     JSONObject checkListRule(ListRuleNode listRuleNode) throws Exception;
 
     JSONObject checkArticleRule(ArticleRuleNode articleRuleNode) throws Exception;
+
+    JSONObject checkApiListRule(ApiListRuleNode apiListRuleNode) throws Exception;
+
+    JSONObject checkApiArticleRule(ApiArticleRuleNode apiArticleRuleNode) throws Exception;
 
 }

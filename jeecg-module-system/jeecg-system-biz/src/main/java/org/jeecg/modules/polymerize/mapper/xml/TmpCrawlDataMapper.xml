@@ -25,6 +25,16 @@
         <if test='errorCode != null and errorCode != ""'>
             AND error_code = #{errorCode}
         </if>
+        <if test='startCreateTime != null and startCreateTime != ""'>
+            <![CDATA[
+            AND create_time >= str_to_date( #{startCreateTime},'%Y-%m-%d %H:%i:%s')
+            ]]>
+        </if>
+        <if test='endCreateTime != null and endCreateTime != ""'>
+            <![CDATA[
+            AND create_time <= str_to_date( #{endCreateTime},'%Y-%m-%d %H:%i:%s')
+            ]]>
+        </if>
         <if test='customTagList != null and customTagList.size > 0'>
             AND
             <foreach collection="customTagList" item="item" separator="AND">

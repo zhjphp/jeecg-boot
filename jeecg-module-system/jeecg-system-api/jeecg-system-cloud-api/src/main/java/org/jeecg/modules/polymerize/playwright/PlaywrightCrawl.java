@@ -1,12 +1,15 @@
 package org.jeecg.modules.polymerize.playwright;
 
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.microsoft.playwright.*;
 import com.microsoft.playwright.options.LoadState;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
+import org.checkerframework.checker.units.qual.A;
 import org.jeecg.common.util.DateUtils;
+import org.jeecg.common.util.SpringContextUtils;
 import org.jeecg.common.util.URLUtils;
 import org.jeecg.common.util.oConvertUtils;
 import org.jeecg.modules.polymerize.drawflow.*;
@@ -14,7 +17,9 @@ import org.jeecg.modules.polymerize.drawflow.model.*;
 import org.jeecg.modules.polymerize.entity.TmpCrawlData;
 import org.jeecg.modules.polymerize.playwright.data.DataStorageService;
 import org.jeecg.modules.polymerize.playwright.filter.PlaywrightDataFilter;
+import org.jeecg.modules.polymerize.playwright.parser.ApiParser;
 import org.jeecg.modules.polymerize.playwright.parser.PageParser;
+import org.jeecg.modules.polymerize.playwright.requester.ApiRequester;
 import org.jeecg.modules.polymerize.playwright.ua.util.FakeUa;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
@@ -154,6 +159,11 @@ public class PlaywrightCrawl {
 
     @Resource
     private PageParser pageParser;
+
+    private ApiParser apiParser = SpringContextUtils.getApplicationContext().getBean(ApiParser.class);
+
+    @Resource
+    private ApiRequester apiRequester;
 
 
     /**
@@ -363,8 +373,11 @@ public class PlaywrightCrawl {
      */
     public void recursion(DrawflowNode node) throws Exception {
         log.info("递归执行: {}", node.toString());
+        omsLogger.info(logThreadId() + "递归执行: {}", node.toString());
         if (node.hasChild) {
             List<String> childIdList = node.getChild();
+            log.info("执行子节点: {}", childIdList.toString());
+            omsLogger.info(logThreadId() + "执行子节点: {}", childIdList.toString());
             for (String childId : childIdList) {
                 DrawflowNode childNode = drawflow.getNode(childId);
                 // 取出一个节点,就需要去执行
@@ -372,6 +385,9 @@ public class PlaywrightCrawl {
                 // 执行完成进行当前节点的子节点
                 recursion(childNode);
             }
+        } else {
+            log.info("不执行子节点");
+            omsLogger.info(logThreadId() + "不执行子节点");
         }
     }
 
@@ -382,6 +398,8 @@ public class PlaywrightCrawl {
      * @throws Exception
      */
     public void drawflowNodeProcess(DrawflowNode node) throws Exception {
+        log.info("节点类型: {}", node.getNodeType());
+        omsLogger.info(logThreadId() + "节点类型: {}", node.getNodeType());
         // 列表节点
         if (node.getNodeType().equals(DrawflowNode.LIST_RULE_NODE)) {
             log.info("执行列表节点: {}", node.toString());
@@ -394,6 +412,598 @@ public class PlaywrightCrawl {
             omsLogger.info(logThreadId() + "执行稿件节点: {}", node.toString());
             articleNodeProcess(node);
         }
+        // API列表节点
+        if (node.getNodeType().equals(DrawflowNode.API_LIST_RULE_NODE)) {
+            log.info("执行API列表节点: {}", node.toString());
+            omsLogger.info(logThreadId() + "执行API列表节点: {}", node.toString());
+            apiListNodeProcess(node);
+        }
+        // API稿件节点
+        if (node.getNodeType().equals(DrawflowNode.API_ARTICLE_RULE_NODE)) {
+            log.info("执行稿件节点: {}", node.toString());
+            omsLogger.info(logThreadId() + "执行稿件节点: {}", node.toString());
+            apiArticleNodeProcess(node);
+        }
+    }
+
+    /**
+     * 执行详情节点
+     *
+     * @param articleNode
+     * @throws Exception
+     */
+    public void apiArticleNodeProcess(DrawflowNode articleNode) throws Exception {
+        // 如果是详情节点,则判断是否为单页采集节点
+        JSONObject obj = articleNode.getData();
+        ApiArticleRuleNode apiArticleRuleNode = new ApiArticleRuleNode(obj);
+        if (apiArticleRuleNode.getSingleFlag()) {
+            try {
+                log.info("当前为API单页采集节点");
+                omsLogger.info(logThreadId() + "当前为API单页采集节点");
+                List<ApiArticleRuleNode> apiArticleRuleNodeList = new ArrayList<>();
+                apiArticleRuleNodeList.add(apiArticleRuleNode);
+                getApiArticle(null, apiArticleRuleNodeList);
+            } catch (Exception e) {
+                throw e;
+            }
+        } else {
+            // 非单页采集无法独立执行
+            log.warn("无法独立执行非单页规则稿件采集");
+            omsLogger.warn(logThreadId() + "无法独立执行非单页规则稿件采集");
+        }
+    }
+
+    public void apiListNodeProcess(DrawflowNode apiListNode) throws Exception {
+        // 取出需要爬取的起始url
+        JSONObject apiListObj = apiListNode.getData();
+        ApiListRuleNode apiListRuleNode = new ApiListRuleNode(apiListObj);
+        if (oConvertUtils.isEmpty(apiListRuleNode.getStartUrls())) {
+            log.error("没有配置采集起始url");
+            omsLogger.error(logThreadId() + "没有配置采集起始url");
+            throw new RuntimeException(logThreadId() + "没有配置采集起始url");
+        }
+        List<String> startUrlList = Arrays.stream(apiListRuleNode.getStartUrls().split("\n")).collect(Collectors.toList());
+
+        // 取出列表对应的详情节点规则
+        List<ApiArticleRuleNode> apiArticleRuleNodeList = new ArrayList<>();
+        List<String> childIdList = apiListNode.getChild();
+        // 如果没有定义详情节点
+        if (oConvertUtils.isEmpty(childIdList)) {
+            childIdList = new ArrayList<>();
+        }
+        // 如果定义了详情节点
+        if (childIdList.size() > 0) {
+            // 遍历取出对应的详情节点
+            for (int i = 0; i < childIdList.size(); i++) {
+                // 取出详情节点ID
+                String apiArticleNodeId = childIdList.get(i);
+                // 取出详情节点
+                DrawflowNode articleNode = drawflow.getNode(apiArticleNodeId);
+                JSONObject articleObj = articleNode.getData();
+                ApiArticleRuleNode apiArticleRuleNode = new ApiArticleRuleNode(articleObj);
+                apiArticleRuleNodeList.add(apiArticleRuleNode);
+            }
+        }
+
+        // 开始按url爬取列表页
+        for (String startUrl: startUrlList) {
+            // 超时重试一次
+            int tries = 0;
+            while (tries < retryTimes) {
+                try {
+                    // 采集列表
+                    getApiList(startUrl, apiListRuleNode, apiArticleRuleNodeList);
+                    break;
+                } catch (PlaywrightException e) {
+                    throw e;
+                }
+            }
+        }
+    }
+
+    public void  getApiList(String startUrl, ApiListRuleNode apiListRuleNode, List<ApiArticleRuleNode> apiArticleRuleNodeList) throws Exception {
+        // 获取请求要素
+        String method = apiListRuleNode.getMethod();
+        String url = startUrl;
+        String contentType = apiListRuleNode.getContentType();
+
+        // 列表翻页循环关键参数
+        // 总页数(默认1)
+        Integer totalPage = 1;
+        // 当前页码
+        Integer currentPage = 1;
+        // 是否翻页
+        boolean isPageDown = true;
+        // 预防置顶稿件
+        int preventToppingCount = 0;
+        // 循环翻页
+        while ( (currentPage <= totalPage) && isPageDown ) {
+            // 先解析自定义参数变量 (因为自定义参数变量可能使用从结果中抽取的变量,所以每次都需要更新自定义变量)
+            if (oConvertUtils.isNotEmpty(apiListRuleNode.getCustomParam())) {
+                log.info("解析自定义参数变量: {}", apiListRuleNode.getCustomParam());
+                omsLogger.info(logThreadId() + "解析自定义参数变量: {}", apiListRuleNode.getCustomParam());
+                apiParser.parseCustomParam(apiListRuleNode.getCustomParam());
+            }
+            // 解析URL中的占位符变量 (url中占位符为变量,所以每次需要重新解析)
+            log.info("准备解析解析URL中的占位符变量: {}", url);
+            omsLogger.info(logThreadId() + "准备解析解析URL中的占位符变量: {}", url);
+            url = apiParser.parseParamPlaceholder(url);
+            log.info("目标URL: {}", url);
+            omsLogger.info(logThreadId() + "目标URL: {}", url);
+            // 请求相关参数
+            String header = null;
+            String body = null;
+            String result = null;
+            String urlParam = null;
+            // 解析header (header中可能包含变量,所以每次需要重新解析)
+            if (oConvertUtils.isNotEmpty(apiListRuleNode.getReqHeader())) {
+                header = apiParser.parseParamPlaceholder(apiListRuleNode.getReqHeader());
+                log.info("解析header: {}", header);
+                omsLogger.info(logThreadId() + "解析header: {}", header);
+            }
+            // 解析body (body中可能包含变量,所以每次需要重新解析)
+            if (oConvertUtils.isNotEmpty(apiListRuleNode.getReqBody())) {
+                body = apiParser.parseParamPlaceholder(apiListRuleNode.getReqBody());
+                log.info("解析body: {}", body);
+                omsLogger.info(logThreadId() + "解析body: {}", body);
+            }
+            // 解析urlParam (url参数中可能包含变量,所以每次需要重新解析)
+            if (oConvertUtils.isNotEmpty(apiListRuleNode.getReqUrlParam())) {
+                urlParam = apiParser.parseParamPlaceholder(apiListRuleNode.getReqUrlParam());
+                log.info("解析urlParam: {}", urlParam);
+                omsLogger.info(logThreadId() + "解析urlParam: {}", urlParam);
+            }
+            // 请求API
+            result = apiRequester.request(method, url, contentType, header, body, urlParam);
+            // 解析列表区块
+            String listJSON = null;
+            if (oConvertUtils.isNotEmpty(apiListRuleNode.getListMatch())) {
+                log.info("列表区块rule: {}", apiListRuleNode.getListMatch());
+                listJSON = apiParser.doParse(result, apiListRuleNode.getListMatch(), RuleNodeUtil.getFiledName(ApiListRuleNode::getListMatch), false);
+            }
+            log.info("解析列表区块 listJSON: {}", listJSON);
+            omsLogger.info(logThreadId() + "解析列表区块 listJSON: {}", listJSON);
+            JSONArray listJSONArray = JSONArray.parseArray(listJSON);
+            // 总页数根据配置决定是否覆盖
+            // 只在首次请求的时候进行覆盖
+            if (currentPage == 1) {
+                // 判断是存在总页数配置
+                if (oConvertUtils.isNotEmpty(apiListRuleNode.getTotalPageMatch())) {
+                    // 如果有总页数配置
+                    String totalPageMatch = apiParser.doParse(result, apiListRuleNode.getTotalPageMatch(), RuleNodeUtil.getFiledName(ApiListRuleNode::getTotalPageMatch), true);
+                    if (oConvertUtils.isNotEmpty(totalPageMatch)) {
+                        totalPage = Integer.parseInt(totalPageMatch);
+                        log.info("总页数匹配 totalPageMatch: {}", totalPageMatch);
+                    }
+                } else if (oConvertUtils.isNotEmpty(apiListRuleNode.getTotalCountMatch())){
+                    Integer pageSize = null;
+                    // 如果有总数量配置
+                    if (oConvertUtils.isNotEmpty(apiListRuleNode.getPageSizeMatch())) {
+                        // 如果定义了页容量则使用容量配置
+                        pageSize = Integer.parseInt(apiListRuleNode.getPageSizeMatch());
+                        log.info("页容量使用pageSizeMatch: {}", pageSize);
+                        omsLogger.info(logThreadId() + "页容量使用pageSizeMatch: {}", pageSize);
+                    } else {
+                        // 如果没有定义页容量配置,则自动获取页容量
+                        pageSize = listJSONArray.size();
+                        log.info("页容量使用自动获取: {}", pageSize);
+                        omsLogger.info(logThreadId() + "页容量使用自动获取: {}", pageSize);
+                    }
+                    // 如果没有总页数,但是有总数量
+                    String totalCountStr = apiParser.doParse(result, apiListRuleNode.getTotalCountMatch(), RuleNodeUtil.getFiledName(ApiListRuleNode::getTotalCountMatch), true);
+                    Integer totalCount = Integer.parseInt(totalCountStr);
+                    // 用总数量除页容量获取总页数
+                    totalPage = totalCount/pageSize;
+                    log.info("使用总稿件数量计算总页数: {}", totalPage);
+                    omsLogger.info(logThreadId() + "使用总稿件数量计算总页数: {}", totalPage);
+                }
+                log.info("总页数: {}", totalPage);
+                omsLogger.info(logThreadId() + "总页数: {}", totalPage);
+            }
+            // 解析页面元素
+            // 编列列表区块
+            log.info("开始遍历列表区块");
+            omsLogger.info(logThreadId() + "开始遍历列表区块");
+            Iterator<Object> it = listJSONArray.iterator();
+            // 记录列表区块解析结果
+            List<ApiListResult> resultList = new ArrayList<>();
+            // 如果在列表中采集
+            List<ArticleResult> articleResultList = new ArrayList<>();
+            while (it.hasNext()) {
+                ApiListResult apiListResult = new ApiListResult();
+                Object elementObj = it.next();
+                String elementJson = JSONObject.toJSONString(elementObj);
+                // 接口url
+                apiListResult.setApiUrl(url);
+                // 解析详情ID
+                String articleId = null;
+                if (oConvertUtils.isNotEmpty(apiListRuleNode.getArticleIdMatch())) {
+                    articleId = apiParser.doParse(elementJson, apiListRuleNode.getArticleIdMatch(), RuleNodeUtil.getFiledName(ApiListRuleNode::getArticleIdMatch), false);
+                }
+                apiListResult.setArticleId(articleId);
+                log.info("解析详情ID: {}", articleId);
+                omsLogger.info(logThreadId() + "解析详情ID: {}", articleId);
+                // 解析详情标题
+                String articleTitle = null;
+                if (oConvertUtils.isNotEmpty(apiListRuleNode.getArticleTitleMatch())) {
+                    articleTitle = apiParser.doParse(elementJson, apiListRuleNode.getArticleTitleMatch(), RuleNodeUtil.getFiledName(ApiListRuleNode::getArticleTitleMatch), false);
+                }
+                apiListResult.setTitle(articleTitle);
+                log.info("解析详情标题: {}", articleTitle);
+                omsLogger.info(logThreadId() + "解析详情标题: {}", articleTitle);
+                // 解析详情日期
+                String articleDate = null;
+                if (oConvertUtils.isNotEmpty(apiListRuleNode.getArticleDateMatch())) {
+                    articleDate = apiParser.doParse(elementJson, apiListRuleNode.getArticleDateMatch(), RuleNodeUtil.getFiledName(ApiListRuleNode::getArticleDateMatch), false);
+                }
+                Date cutDate = null;
+                if (oConvertUtils.isNotEmpty(articleDate)) {
+                    try {
+                        log.info("格式化时间: {}", articleDate);
+                        cutDate = DateUtils.cutDate(articleDate);
+                        apiListResult.setDate(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(cutDate));
+                    } catch (RuntimeException e) {
+                        log.warn("格式化时间错误: {}", articleDate);
+                        omsLogger.warn(logThreadId() + "格式化时间错误: {}", articleDate);
+                        apiListResult.setDate(null);
+                    }
+                } else {
+                    apiListResult.setDate(null);
+                }
+                apiListResult.setDate(articleDate);
+                log.info("解析详情日期: {}", articleDate);
+                omsLogger.info(logThreadId() + "解析详情日期: {}", articleDate);
+
+                // 直接在列表中采集数据使用的数据存储对象
+                ArticleResult articleResult = new ArticleResult();
+                // 如果指定在列表页中直接采集数据
+                if (apiListRuleNode.inListFlag) {
+                    articleResult.setInformationSourceId(informationSourceId);
+                    articleResult.setTaskId(taskId);
+                    articleResult.setJobId(jobId);
+                    articleResult.setInformationSourceDomain(informationSourceDomain);
+                    articleResult.setInformationSourceName(informationSourceName);
+                    // 标题
+                    articleResult.setTitle(articleTitle);
+                    // url
+                    articleResult.setUrl(url + "${articleId}=" + articleId);
+                    // 日期
+                    articleResult.setDate(articleDate);
+                    // 正文
+                    if (oConvertUtils.isNotEmpty(apiListRuleNode.getContentMatch())) {
+                        String content = apiParser.doParse(result, apiListRuleNode.getContentMatch(), RuleNodeUtil.getFiledName(ApiArticleRuleNode::getContentMatch), false);
+                        log.info("解析正文: {}", content);
+                        omsLogger.info(logThreadId() + "解析正文: {}", content);
+                        articleResult.setContent(content);
+                    }
+                    // 栏目
+                    if (oConvertUtils.isNotEmpty(apiListRuleNode.getTopicMatch())) {
+                        String topic = apiParser.doParse(result, apiListRuleNode.getTopicMatch(), RuleNodeUtil.getFiledName(ApiArticleRuleNode::getTopicMatch), false);
+                        log.info("解析栏目: {}", topic);
+                        omsLogger.info(logThreadId() + "解析栏目: {}", topic);
+                        articleResult.setTopic(topic);
+                    }
+                    // 子标题(元标签)
+                    if (oConvertUtils.isNotEmpty(apiListRuleNode.getSubtitleMatch())) {
+                        String subtitle = apiParser.doParse(result, apiListRuleNode.getSubtitleMatch(), RuleNodeUtil.getFiledName(ApiArticleRuleNode::getSubtitleMatch), false);
+                        log.info("解析子标题: {}", subtitle);
+                        omsLogger.info(logThreadId() + "解析子标题: {}", subtitle);
+                        articleResult.setSubtitle(subtitle);
+                    }
+                    // 来源
+                    if (oConvertUtils.isNotEmpty(apiListRuleNode.getSourceMatch())) {
+                        String source = apiParser.doParse(result, apiListRuleNode.getSourceMatch(), RuleNodeUtil.getFiledName(ApiArticleRuleNode::getSourceMatch), false);
+                        log.info("解析来源: {}", source);
+                        omsLogger.info(logThreadId() + "解析来源: {}", source);
+                        articleResult.setSource(source);
+                    }
+                    // 关键词
+                    if (oConvertUtils.isNotEmpty(apiListRuleNode.getKeywordsMatch())) {
+                        String keywords = apiParser.doParse(result, apiListRuleNode.getKeywordsMatch(), RuleNodeUtil.getFiledName(ApiArticleRuleNode::getKeywordsMatch), false);
+                        log.info("解析关键词: {}", keywords);
+                        omsLogger.info(logThreadId() + "解析关键词: {}", keywords);
+                        articleResult.setKeywords(keywords);
+                    }
+                    // 描述
+                    if (oConvertUtils.isNotEmpty(apiListRuleNode.getDescriptionMatch())) {
+                        String description = apiParser.doParse(result, apiListRuleNode.getDescriptionMatch(), RuleNodeUtil.getFiledName(ApiArticleRuleNode::getDescriptionMatch), false);
+                        log.info("解析描述: {}", description);
+                        omsLogger.info(logThreadId() + "解析描述: {}", description);
+                        articleResult.setDescription(description);
+                    }
+                    // 出处
+                    if (oConvertUtils.isNotEmpty(apiListRuleNode.getReferenceMatch())) {
+                        String reference = apiParser.doParse(result, apiListRuleNode.getReferenceMatch(), RuleNodeUtil.getFiledName(ApiArticleRuleNode::getReferenceMatch), false);
+                        log.info("解析出处: {}", reference);
+                        omsLogger.info(logThreadId() + "解析出处: {}", reference);
+                        articleResult.setReference(reference);
+                    }
+                    // 作者
+                    if (oConvertUtils.isNotEmpty(apiListRuleNode.getAuthorMatch())) {
+                        String author = apiParser.doParse(result, apiListRuleNode.getAuthorMatch(), RuleNodeUtil.getFiledName(ApiArticleRuleNode::getAuthorMatch), false);
+                        log.info("解析作者: {}", author);
+                        omsLogger.info(logThreadId() + "解析作者: {}", author);
+                        articleResult.setAuthor(author);
+                    }
+                    // 访问量
+                    if (oConvertUtils.isNotEmpty(apiListRuleNode.getVisitMatch())) {
+                        String visit = apiParser.doParse(result, apiListRuleNode.getVisitMatch(), RuleNodeUtil.getFiledName(ApiArticleRuleNode::getVisitMatch), false);
+                        log.info("解析访问量: {}", visit);
+                        omsLogger.info(logThreadId() + "解析访问量: {}", visit);
+                        articleResult.setVisit(visit);
+                    }
+                    // 评论量
+                    if (oConvertUtils.isNotEmpty(apiListRuleNode.getCommentMatch())) {
+                        String comment = apiParser.doParse(result, apiListRuleNode.getCommentMatch(), RuleNodeUtil.getFiledName(ApiArticleRuleNode::getCommentMatch), false);
+                        log.info("解析评论量: {}", comment);
+                        omsLogger.info(logThreadId() + "解析评论量: {}", comment);
+                        articleResult.setComment(comment);
+                    }
+                    // 收藏量
+                    if (oConvertUtils.isNotEmpty(apiListRuleNode.getCollectMatch())) {
+                        String collect = apiParser.doParse(result, apiListRuleNode.getCollectMatch(), RuleNodeUtil.getFiledName(ApiArticleRuleNode::getCollectMatch), false);
+                        log.info("解析收藏量: {}", collect);
+                        omsLogger.info(logThreadId() + "解析收藏量: {}", collect);
+                        articleResult.setCollect(collect);
+                    }
+                }
+
+                // 判断日期是否为目标时间段的数据
+                if (
+                        ( oConvertUtils.isNotEmpty(apiListRuleNode.getStartTime()) && oConvertUtils.isNotEmpty(cutDate) && cutDate.after(apiListRuleNode.getStartTime()) )
+                ) {
+                    log.info("设定了有效时间段,在StartTime之后");
+                    if (
+                            ( oConvertUtils.isNotEmpty(apiListRuleNode.getEndTime()) && oConvertUtils.isNotEmpty(cutDate) && cutDate.before(apiListRuleNode.getEndTime()) )
+                    ) {
+                        // 如果设定了起止时间,且在时间段内,则为有效数据
+                        log.info("在getEndTime()之前,为有效时间段数据");
+                        // 记录采集结果
+                        resultList.add(apiListResult);
+                        articleResultList.add(articleResult);
+                    } else {
+                        log.info("不在getEndTime()之前,继续向前寻找");
+                        listErrorDataProcess(apiListResult.getApiUrl(), apiListResult.getTitle(), apiListResult.getDate(), "不在getEndTime()之前");
+                    }
+                } else if (
+                        oConvertUtils.isEmpty(apiListRuleNode.getStartTime())
+                                &&
+                                oConvertUtils.isEmpty(apiListRuleNode.getEndTime())
+                                &&
+                                (apiListRuleNode.getEffectiveDays() > 0)
+                                &&
+                                oConvertUtils.isNotEmpty(cutDate)
+                                &&
+                                cutDate.after(
+                                        org.apache.commons.lang.time.DateUtils.addDays(new Date(), apiListRuleNode.getEffectiveDays() * -1)
+                                )
+                ) {
+                    // 如果没有设定起止时间,且设定了有效天数,且在有效天数内,则为有效数据
+                    log.info("没有设定起止时间,且设定了有效天数,且在有效天数内,为有效数据");
+                    // 记录采集结果
+                    resultList.add(apiListResult);
+                    articleResultList.add(articleResult);
+                } else if (
+                        oConvertUtils.isEmpty(apiListRuleNode.getStartTime())
+                                &&
+                                oConvertUtils.isEmpty(apiListRuleNode.getEndTime())
+                                &&
+                                (apiListRuleNode.getEffectiveDays() == 0)
+                ) {
+                    // 如果都没设定,则所有数据为有效
+                    log.info("都没设定,所有数据为有效");
+                    // 记录采集结果
+                    resultList.add(apiListResult);
+                    articleResultList.add(articleResult);
+                } else {
+                    // 其他情况,丢弃数据
+                    log.info("超出目标时间范围,目标起始时间: {}, 目标结束时间: {}, 目标有效天数: {}, 稿件时间: {}", apiListRuleNode.getStartTime(), apiListRuleNode.getStartTime(), apiListRuleNode.getEffectiveDays(), cutDate);
+                    preventToppingCount++;
+                    log.info("防止有置顶帖,继续处理,当前处理数量: {}, 配置容忍数量: {}", preventToppingCount, toppingCount);
+                    listErrorDataProcess(apiListResult.getApiUrl(), apiListResult.getTitle(), apiListResult.getDate(), "超出目标时间范围");
+                    if (preventToppingCount >= toppingCount) {
+                        log.info("到达置顶帖容忍数量,停止翻页");
+                        isPageDown = false;
+                        break;
+                    } else {
+                        log.info("不停止翻页");
+                    }
+                }
+
+                // 记录采集结果
+                // resultList.add(apiListResult);
+            }
+
+            // 判断是否在列表中直接采集数据
+            if (apiListRuleNode.inListFlag) {
+                log.info("列表中采集数据 articleResultList: {}", articleResultList);
+                omsLogger.info(logThreadId() + "列表中采集数据 articleResultList: {}", articleResultList);
+                // 指定在列表中采集,则直接存储数据
+                for (ArticleResult tmpResult : articleResultList) {
+                    log.info("tmpResult: {}", tmpResult);
+                    articleDataProcess(tmpResult);
+                }
+            } else {
+                log.info("详情中采集数据 resultList: {}", resultList);
+                omsLogger.info(logThreadId() + "详情中采集数据 articleResultList: {}", resultList);
+                // 如果没有配置列表页直采,则通过详情页规则采集
+                for (ApiListResult tmpResult : resultList) {
+                    getApiArticle(tmpResult.getArticleId(), apiArticleRuleNodeList);
+                }
+            }
+
+            // 采集完一个列表页,翻页
+            currentPage++;
+        }
+    }
+
+    public void getApiArticle(String articleId, List<ApiArticleRuleNode> apiArticleRuleNodeList) throws Exception {
+        ArticleResult articleResult = new ArticleResult();
+        articleResult.setInformationSourceId(informationSourceId);
+        articleResult.setTaskId(taskId);
+        articleResult.setJobId(jobId);
+        articleResult.setInformationSourceDomain(informationSourceDomain);
+        articleResult.setInformationSourceName(informationSourceName);
+        // api详情一般情况下不需要多套规则,不支持多个详情规则
+        ApiArticleRuleNode apiArticleRuleNode = apiArticleRuleNodeList.get(0);
+        // 获取请求要素
+        String method = apiArticleRuleNode.getMethod();
+        String contentType = apiArticleRuleNode.getContentType();
+        String articleUrl = apiArticleRuleNode.getArticleReqUrl();
+        if (oConvertUtils.isEmpty(articleUrl)) {
+            throw new Exception("详情URL为空");
+        }
+
+        // 在变量池中加入或更新articleKey,可以在header或body中使用${articleKey}
+        if (oConvertUtils.isNotEmpty(articleId)) {
+            apiParser.addParamPool("articleId", articleId);
+            log.info("加入系统预留变量: articleId={}", articleId);
+            omsLogger.info(logThreadId() + "加入系统预留变量: articleId={}", articleId);
+        }
+        // 因为自定义参数可以使用list页面中的变量,所以每次都需要更新自定义变量
+        if (oConvertUtils.isNotEmpty(apiArticleRuleNode.getArticleCustomParam())) {
+            apiParser.parseCustomParam(apiArticleRuleNode.getArticleCustomParam());
+        }
+        // 解析url中的自定义变量占位符
+        articleUrl = apiParser.parseParamPlaceholder(articleUrl);
+        // 因为header,body,urlParam中可能使用从结果中抽取的变量,所以每次都需要重新组装header,body
+        String header = null;
+        String body = null;
+        String urlParam = null;
+        if (oConvertUtils.isNotEmpty(apiArticleRuleNode.getReqHeader())) {
+            header = apiParser.parseParamPlaceholder(apiArticleRuleNode.getReqHeader());
+            log.info("解析header: {}", header);
+            omsLogger.info(logThreadId() + "解析header: {}", header);
+        }
+        // 解析body
+        if (oConvertUtils.isNotEmpty(apiArticleRuleNode.getReqBody())) {
+            body = apiParser.parseParamPlaceholder(apiArticleRuleNode.getReqBody());
+            log.info("解析body: {}", body);
+            omsLogger.info(logThreadId() + "解析body: {}", body);
+        }
+        // 解析urlParam
+        if (oConvertUtils.isNotEmpty(apiArticleRuleNode.getReqUrlParam())) {
+            urlParam = apiParser.parseParamPlaceholder(apiArticleRuleNode.getReqUrlParam());
+            log.info("解析urlParam: {}", urlParam);
+            omsLogger.info(logThreadId() + "解析urlParam: {}", urlParam);
+        }
+        // 请求API
+        String result = apiRequester.request(method, articleUrl, contentType, header, body, urlParam);
+        // 把响应数据写入变量池,可以当作结果预处理方法的参数
+        apiParser.addParamPool("articleResponse", result);
+        log.info("稿件详情结果: {}", result);
+        omsLogger.info(logThreadId() + "稿件详情结果: {}", result);
+        // 执行预处理指令,对结果进行预处理(例如解密文本等)
+        if (oConvertUtils.isNotEmpty(apiArticleRuleNode.getResultPreprocessor())) {
+            result = apiParser.doParse(result, apiArticleRuleNode.getResultPreprocessor(), RuleNodeUtil.getFiledName(ApiArticleRuleNode::getResultPreprocessor), false);
+            log.info("预处理详情结果: {}", result);
+            omsLogger.info(logThreadId() + "预处理详情结果: {}", result);
+        }
+        // 数据库中存储的url字段
+        articleResult.setUrl(articleUrl + "${articleId}=" + articleId);
+        // 解析稿件内容
+        try {
+            // 解析详情标题
+            log.info("标题匹配: {}", apiArticleRuleNode.getTitleMatch());
+            if (oConvertUtils.isNotEmpty(apiArticleRuleNode.getTitleMatch())) {
+                String articleTitle = apiParser.doParse(result, apiArticleRuleNode.getTitleMatch(), RuleNodeUtil.getFiledName(ApiArticleRuleNode::getTitleMatch), false);
+                log.info("解析标题: {}", articleTitle);
+                omsLogger.info(logThreadId() + "解析标题: {}", articleTitle);
+                articleResult.setTitle(articleTitle);
+            }
+            // 解析详情日期
+            if (oConvertUtils.isNotEmpty(apiArticleRuleNode.getDateMatch())) {
+                String articleDate = apiParser.doParse(result, apiArticleRuleNode.getDateMatch(), RuleNodeUtil.getFiledName(ApiArticleRuleNode::getDateMatch), false);
+                log.info("解析详情日期: {}", articleDate);
+                omsLogger.info(logThreadId() + "解析详情日期: {}", articleDate);
+                articleResult.setDate(articleDate);
+            }
+            // 正文
+            if (oConvertUtils.isNotEmpty(apiArticleRuleNode.getContentMatch())) {
+                String content = apiParser.doParse(result, apiArticleRuleNode.getContentMatch(), RuleNodeUtil.getFiledName(ApiArticleRuleNode::getContentMatch), false);
+                log.info("解析正文: {}", content);
+                omsLogger.info(logThreadId() + "解析正文: {}", content);
+                articleResult.setContent(content);
+            }
+            // 栏目
+            if (oConvertUtils.isNotEmpty(apiArticleRuleNode.getTopicMatch())) {
+                String topic = apiParser.doParse(result, apiArticleRuleNode.getTopicMatch(), RuleNodeUtil.getFiledName(ApiArticleRuleNode::getTopicMatch), false);
+                log.info("解析栏目: {}", topic);
+                omsLogger.info(logThreadId() + "解析栏目: {}", topic);
+                articleResult.setTopic(topic);
+            }
+            // 子标题(元标签)
+            if (oConvertUtils.isNotEmpty(apiArticleRuleNode.getSubtitleMatch())) {
+                String subtitle = apiParser.doParse(result, apiArticleRuleNode.getSubtitleMatch(), RuleNodeUtil.getFiledName(ApiArticleRuleNode::getSubtitleMatch), false);
+                log.info("解析子标题: {}", subtitle);
+                omsLogger.info(logThreadId() + "解析子标题: {}", subtitle);
+                articleResult.setSubtitle(subtitle);
+            }
+            // 来源
+            if (oConvertUtils.isNotEmpty(apiArticleRuleNode.getSourceMatch())) {
+                String source = apiParser.doParse(result, apiArticleRuleNode.getSourceMatch(), RuleNodeUtil.getFiledName(ApiArticleRuleNode::getSourceMatch), false);
+                log.info("解析来源: {}", source);
+                omsLogger.info(logThreadId() + "解析来源: {}", source);
+                articleResult.setSource(source);
+            }
+            // 关键词
+            if (oConvertUtils.isNotEmpty(apiArticleRuleNode.getKeywordsMatch())) {
+                String keywords = apiParser.doParse(result, apiArticleRuleNode.getKeywordsMatch(), RuleNodeUtil.getFiledName(ApiArticleRuleNode::getKeywordsMatch), false);
+                log.info("解析关键词: {}", keywords);
+                omsLogger.info(logThreadId() + "解析关键词: {}", keywords);
+                articleResult.setKeywords(keywords);
+            }
+            // 描述
+            if (oConvertUtils.isNotEmpty(apiArticleRuleNode.getDescriptionMatch())) {
+                String description = apiParser.doParse(result, apiArticleRuleNode.getDescriptionMatch(), RuleNodeUtil.getFiledName(ApiArticleRuleNode::getDescriptionMatch), false);
+                log.info("解析描述: {}", description);
+                omsLogger.info(logThreadId() + "解析描述: {}", description);
+                articleResult.setDescription(description);
+            }
+            // 出处
+            if (oConvertUtils.isNotEmpty(apiArticleRuleNode.getReferenceMatch())) {
+                String reference = apiParser.doParse(result, apiArticleRuleNode.getReferenceMatch(), RuleNodeUtil.getFiledName(ApiArticleRuleNode::getReferenceMatch), false);
+                log.info("解析出处: {}", reference);
+                omsLogger.info(logThreadId() + "解析出处: {}", reference);
+                articleResult.setReference(reference);
+            }
+            // 作者
+            if (oConvertUtils.isNotEmpty(apiArticleRuleNode.getAuthorMatch())) {
+                String author = apiParser.doParse(result, apiArticleRuleNode.getAuthorMatch(), RuleNodeUtil.getFiledName(ApiArticleRuleNode::getAuthorMatch), false);
+                log.info("解析作者: {}", author);
+                omsLogger.info(logThreadId() + "解析作者: {}", author);
+                articleResult.setAuthor(author);
+            }
+            // 访问量
+            if (oConvertUtils.isNotEmpty(apiArticleRuleNode.getVisitMatch())) {
+                String visit = apiParser.doParse(result, apiArticleRuleNode.getVisitMatch(), RuleNodeUtil.getFiledName(ApiArticleRuleNode::getVisitMatch), false);
+                log.info("解析访问量: {}", visit);
+                omsLogger.info(logThreadId() + "解析访问量: {}", visit);
+                articleResult.setVisit(visit);
+            }
+            // 评论量
+            if (oConvertUtils.isNotEmpty(apiArticleRuleNode.getCommentMatch())) {
+                String comment = apiParser.doParse(result, apiArticleRuleNode.getCommentMatch(), RuleNodeUtil.getFiledName(ApiArticleRuleNode::getCommentMatch), false);
+                log.info("解析评论量: {}", comment);
+                omsLogger.info(logThreadId() + "解析评论量: {}", comment);
+                articleResult.setComment(comment);
+            }
+            // 收藏量
+            if (oConvertUtils.isNotEmpty(apiArticleRuleNode.getCollectMatch())) {
+                String collect = apiParser.doParse(result, apiArticleRuleNode.getCollectMatch(), RuleNodeUtil.getFiledName(ApiArticleRuleNode::getCollectMatch), false);
+                log.info("解析收藏量: {}", collect);
+                omsLogger.info(logThreadId() + "解析收藏量: {}", collect);
+                articleResult.setCollect(collect);
+            }
+            log.info("稿件解析完成: {}", articleUrl);
+            omsLogger.info(logThreadId() + "稿件解析完成: {}", articleUrl);
+            // 存储数据
+            articleDataProcess(articleResult);
+        } catch (RuntimeException e) {
+            // 记录错误数据
+            articleErrorDataProcess(articleResult, e.getMessage());
+        }
+
     }
 
     /**
@@ -722,120 +1332,125 @@ public class PlaywrightCrawl {
             }
             // 遍历每个区块
             for (Locator locator: locators) {
-                log.info("从列表区块中取出每个条目");
-                ListResult listResult = new ListResult();
-                // 稿件标题
-                String title = null;
-                if (oConvertUtils.isNotEmpty(listRuleNode.getArticleTitleMatch())) {
-                    title = listPageContentParser(listRuleNode.getArticleTitleMatch(), locator, null, RuleNodeUtil.getFiledName(ListRuleNode::getArticleTitleMatch));
-                }
-                listResult.setTitle(title);
-                log.info("获取标题, title: {}", title);
-                // 稿件日期
-                String dateStr = null;
-                if (oConvertUtils.isNotEmpty(listRuleNode.getArticleDateMatch())) {
-                    dateStr = listPageContentParser(listRuleNode.getArticleDateMatch(), locator, null, RuleNodeUtil.getFiledName(ListRuleNode::getArticleDateMatch));
-                }
-                Date cutDate = null;
-                if (oConvertUtils.isNotEmpty(dateStr)) {
-                    try {
-                        log.info("格式化时间: {}", dateStr);
-                        cutDate = DateUtils.cutDate(dateStr);
-                        listResult.setDate(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(cutDate));
-                    } catch (RuntimeException e) {
-                        log.warn("格式化时间错误: {}", dateStr);
-                        omsLogger.warn(logThreadId() + "格式化时间错误: {}", dateStr);
+                try {
+                    log.info("从列表区块中取出每个条目");
+                    ListResult listResult = new ListResult();
+                    // 稿件标题
+                    String title = null;
+                    if (oConvertUtils.isNotEmpty(listRuleNode.getArticleTitleMatch())) {
+                        title = listPageContentParser(listRuleNode.getArticleTitleMatch(), locator, null, RuleNodeUtil.getFiledName(ListRuleNode::getArticleTitleMatch));
+                    }
+                    listResult.setTitle(title);
+                    log.info("获取标题, title: {}", title);
+                    // 稿件日期
+                    String dateStr = null;
+                    if (oConvertUtils.isNotEmpty(listRuleNode.getArticleDateMatch())) {
+                        dateStr = listPageContentParser(listRuleNode.getArticleDateMatch(), locator, null, RuleNodeUtil.getFiledName(ListRuleNode::getArticleDateMatch));
+                    }
+                    Date cutDate = null;
+                    if (oConvertUtils.isNotEmpty(dateStr)) {
+                        try {
+                            log.info("格式化时间: {}", dateStr);
+                            cutDate = DateUtils.cutDate(dateStr);
+                            listResult.setDate(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(cutDate));
+                        } catch (RuntimeException e) {
+                            log.warn("格式化时间错误: {}", dateStr);
+                            omsLogger.warn(logThreadId() + "格式化时间错误: {}", dateStr);
+                            listResult.setDate(null);
+                        }
+                    } else {
                         listResult.setDate(null);
                     }
-                } else {
-                    listResult.setDate(null);
-                }
-                log.info("获取时间, cutDate: {}", cutDate);
-                // 稿件链接
-                String articleUrl = null;
-                if (oConvertUtils.isNotEmpty(listRuleNode.getArticleUrlMatch())) {
-                    articleUrl = listPageContentParser(listRuleNode.getArticleUrlMatch(), locator, null, RuleNodeUtil.getFiledName(ListRuleNode::getArticleUrlMatch));
-                    // 过滤获取到的URL
-                    articleUrl = oConvertUtils.replaceBlank(articleUrl);
-                    // 判断取出的url是绝对地址还是相对地址
-                    if (oConvertUtils.isNotEmpty(articleUrl)) {
-                        // 如果是相对地址,把相对地址转换为绝对地址
-                        URI relativeUri = URI.create(articleUrl);
-                        URI currentUri = URI.create(listPage.url());
-                        URI absoluteUri = currentUri.resolve(relativeUri);
-                        articleUrl = absoluteUri.toString();
+                    log.info("获取时间, cutDate: {}", cutDate);
+                    // 稿件链接
+                    String articleUrl = null;
+                    if (oConvertUtils.isNotEmpty(listRuleNode.getArticleUrlMatch())) {
+                        articleUrl = listPageContentParser(listRuleNode.getArticleUrlMatch(), locator, null, RuleNodeUtil.getFiledName(ListRuleNode::getArticleUrlMatch));
+                        // 过滤获取到的URL
+                        articleUrl = oConvertUtils.replaceBlank(articleUrl);
+                        // 判断取出的url是绝对地址还是相对地址
+                        if (oConvertUtils.isNotEmpty(articleUrl)) {
+                            // 如果是相对地址,把相对地址转换为绝对地址
+                            URI relativeUri = URI.create(articleUrl);
+                            URI currentUri = URI.create(listPage.url());
+                            URI absoluteUri = currentUri.resolve(relativeUri);
+                            articleUrl = absoluteUri.toString();
+                        }
                     }
-                }
-                log.info("获取链接, articleUrl: {}", articleUrl);
-                listResult.setUrl(articleUrl);
-                log.info("列表条目: {}", listResult.toString());
-                // 判断取出的url是否是外链
-                if ( oConvertUtils.isEmpty(articleUrl)) {
-                    // 如果没有取到文章链接则不处理
-                    log.warn("无法获取稿件url");
-                    omsLogger.warn(logThreadId() + "无法获取稿件url");
-                    listErrorDataProcess(listResult.getUrl(), listResult.getTitle(), listResult.getDate(), "无法获取稿件url");
-                } else if ( !URLUtils.isSameDomainName(articleUrl, listPage.url()) && !listRuleNode.getEnableOutside() ) {
-                    log.info("当前条目为外链内容,不进行采集: {}", listResult.toString());
-                    listErrorDataProcess(listResult.getUrl(), listResult.getTitle(), listResult.getDate(), "外链");
-                } else {
-                    // 判断日期是否为目标时间段的数据
-                    if (
-                            ( oConvertUtils.isNotEmpty(listRuleNode.getStartTime()) && oConvertUtils.isNotEmpty(cutDate) && cutDate.after(listRuleNode.getStartTime()) )
-                    ) {
-                        log.info("设定了有效时间段,在StartTime之后");
+                    log.info("获取链接, articleUrl: {}", articleUrl);
+                    listResult.setUrl(articleUrl);
+                    log.info("列表条目: {}", listResult.toString());
+                    // 判断取出的url是否是外链
+                    if ( oConvertUtils.isEmpty(articleUrl)) {
+                        // 如果没有取到文章链接则不处理
+                        log.warn("无法获取稿件url");
+                        omsLogger.warn(logThreadId() + "无法获取稿件url");
+                        listErrorDataProcess(listResult.getUrl(), listResult.getTitle(), listResult.getDate(), "无法获取稿件url");
+                    } else if ( !URLUtils.isSameDomainName(articleUrl, listPage.url()) && !listRuleNode.getEnableOutside() ) {
+                        log.info("当前条目为外链内容,不进行采集: {}", listResult.toString());
+                        listErrorDataProcess(listResult.getUrl(), listResult.getTitle(), listResult.getDate(), "外链");
+                    } else {
+                        // 判断日期是否为目标时间段的数据
                         if (
-                                ( oConvertUtils.isNotEmpty(listRuleNode.getEndTime()) && oConvertUtils.isNotEmpty(cutDate) && cutDate.before(listRuleNode.getEndTime()) )
+                                ( oConvertUtils.isNotEmpty(listRuleNode.getStartTime()) && oConvertUtils.isNotEmpty(cutDate) && cutDate.after(listRuleNode.getStartTime()) )
                         ) {
-                            // 如果设定了起止时间,且在时间段内,则为有效数据
-                            log.info("在getEndTime()之前,为有效时间段数据");
+                            log.info("设定了有效时间段,在StartTime之后");
+                            if (
+                                    ( oConvertUtils.isNotEmpty(listRuleNode.getEndTime()) && oConvertUtils.isNotEmpty(cutDate) && cutDate.before(listRuleNode.getEndTime()) )
+                            ) {
+                                // 如果设定了起止时间,且在时间段内,则为有效数据
+                                log.info("在getEndTime()之前,为有效时间段数据");
+                                resultList.add(listResult);
+                            } else {
+                                log.info("不在getEndTime()之前,继续向前寻找");
+                                listErrorDataProcess(listResult.getUrl(), listResult.getTitle(), listResult.getDate(), "不在getEndTime()之前");
+                            }
+                        } else if (
+                                oConvertUtils.isEmpty(listRuleNode.getStartTime())
+                                        &&
+                                        oConvertUtils.isEmpty(listRuleNode.getEndTime())
+                                        &&
+                                        (listRuleNode.getEffectiveDays() > 0)
+                                        &&
+                                        oConvertUtils.isNotEmpty(cutDate)
+                                        &&
+                                        cutDate.after(
+                                                org.apache.commons.lang.time.DateUtils.addDays(new Date(), listRuleNode.getEffectiveDays() * -1)
+                                        )
+                        ) {
+                            // 如果没有设定起止时间,且设定了有效天数,且在有效天数内,则为有效数据
+                            log.info("没有设定起止时间,且设定了有效天数,且在有效天数内,为有效数据");
+                            resultList.add(listResult);
+                        } else if (
+                                oConvertUtils.isEmpty(listRuleNode.getStartTime())
+                                        &&
+                                        oConvertUtils.isEmpty(listRuleNode.getEndTime())
+                                        &&
+                                        (listRuleNode.getEffectiveDays() == 0)
+                        ) {
+                            // 如果都没设定,则所有数据为有效
+                            log.info("都没设定,所有数据为有效");
                             resultList.add(listResult);
                         } else {
-                            log.info("不在getEndTime()之前,继续向前寻找");
-                            listErrorDataProcess(listResult.getUrl(), listResult.getTitle(), listResult.getDate(), "不在getEndTime()之前");
-                        }
-                    } else if (
-                            oConvertUtils.isEmpty(listRuleNode.getStartTime())
-                                    &&
-                                    oConvertUtils.isEmpty(listRuleNode.getEndTime())
-                                    &&
-                                    (listRuleNode.getEffectiveDays() > 0)
-                                    &&
-                                    oConvertUtils.isNotEmpty(cutDate)
-                                    &&
-                                    cutDate.after(
-                                            org.apache.commons.lang.time.DateUtils.addDays(new Date(), listRuleNode.getEffectiveDays() * -1)
-                                    )
-                    ) {
-                        // 如果没有设定起止时间,且设定了有效天数,且在有效天数内,则为有效数据
-                        log.info("没有设定起止时间,且设定了有效天数,且在有效天数内,为有效数据");
-                        resultList.add(listResult);
-                    } else if (
-                            oConvertUtils.isEmpty(listRuleNode.getStartTime())
-                                    &&
-                                    oConvertUtils.isEmpty(listRuleNode.getEndTime())
-                                    &&
-                                    (listRuleNode.getEffectiveDays() == 0)
-                    ) {
-                        // 如果都没设定,则所有数据为有效
-                        log.info("都没设定,所有数据为有效");
-                        resultList.add(listResult);
-                    } else {
-                        // 其他情况,丢弃数据
-                        log.info("超出目标时间范围,目标起始时间: {}, 目标结束时间: {}, 目标有效天数: {}, 稿件时间: {}", listRuleNode.getStartTime(), listRuleNode.getStartTime(), listRuleNode.getEffectiveDays(), cutDate);
-                        preventToppingCount++;
-                        log.info("防止有置顶帖,继续处理,当前处理数量: {}, 配置容忍数量: {}", preventToppingCount, toppingCount);
-                        listErrorDataProcess(listResult.getUrl(), listResult.getTitle(), listResult.getDate(), "超出目标时间范围");
-                        if (preventToppingCount >= toppingCount) {
-                            log.info("到达置顶帖容忍数量,停止翻页");
-                            isPageDown = false;
-                            break;
-                        } else {
-                            log.info("不停止翻页");
+                            // 其他情况,丢弃数据
+                            log.info("超出目标时间范围,目标起始时间: {}, 目标结束时间: {}, 目标有效天数: {}, 稿件时间: {}", listRuleNode.getStartTime(), listRuleNode.getStartTime(), listRuleNode.getEffectiveDays(), cutDate);
+                            preventToppingCount++;
+                            log.info("防止有置顶帖,继续处理,当前处理数量: {}, 配置容忍数量: {}", preventToppingCount, toppingCount);
+                            listErrorDataProcess(listResult.getUrl(), listResult.getTitle(), listResult.getDate(), "超出目标时间范围");
+                            if (preventToppingCount >= toppingCount) {
+                                log.info("到达置顶帖容忍数量,停止翻页");
+                                isPageDown = false;
+                                break;
+                            } else {
+                                log.info("不停止翻页");
+                            }
                         }
                     }
+                } catch (TimeoutError e) {
+                    // 如果列表中有元素缺失属性,有可能是一些无关元素,所以忽略错误,继续执行
+                    omsLogger.error(logThreadId() + listPage.url() + e.getMessage());
+                    log.error(logThreadId() + listPage.url() + e.getMessage());
                 }
-
             }
             // 如果定义了详情规则,根据列表爬取详情页面
             if (!oConvertUtils.listIsEmpty(articleRuleNodeList)) {
@@ -1347,6 +1962,7 @@ public class PlaywrightCrawl {
                         // 过滤数据
                         if (fieldName.equals("content")) {
                             // 过滤文章详情
+                            log.info("uuuuuuuuuuuuuuuu:" + articleResult.getUrl());
                             URL urlObj = new URL(articleResult.getUrl());
                             String baseUri = urlObj.getProtocol() + "://" + urlObj.getHost();
                             field.set(articleResult, PlaywrightDataFilter.filterArticleContent(fieldValue, baseUri));

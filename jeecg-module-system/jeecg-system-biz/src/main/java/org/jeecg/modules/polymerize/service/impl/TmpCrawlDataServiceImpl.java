@@ -48,7 +48,9 @@ public class TmpCrawlDataServiceImpl extends ServiceImpl<TmpCrawlDataMapper, Tmp
                 customTagList,
                 tmpCrawlDataDTO.getInformationsourceid(),
                 tmpCrawlDataDTO.getTaskid(),
-                tmpCrawlDataDTO.getErrorCode()
+                tmpCrawlDataDTO.getErrorCode(),
+                tmpCrawlDataDTO.getStartCreateTime(),
+                tmpCrawlDataDTO.getEndCreateTime()
         );
         return pageList;
     }

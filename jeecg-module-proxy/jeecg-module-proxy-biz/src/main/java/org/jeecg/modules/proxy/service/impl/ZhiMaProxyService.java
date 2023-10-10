@@ -33,8 +33,7 @@ public class ZhiMaProxyService implements IIPProxyService {
     @Value("${ip-proxy.zhima-proxy.tunnel-type-api}")
     private String tunnelApi;
 
-    @Resource
-    private OkHttpClient okHttpClient;
+    private OkHttpClient okHttpClient = new OkHttpClient();
 
     private static String scheme = "http";
 

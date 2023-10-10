@@ -79,6 +79,7 @@
 		<zt-exec.version>1.121</zt-exec.version>
 		<jsoup.version>1.16.1</jsoup.version>
 		<jsonpath.version>2.8.0</jsonpath.version>
+		<webflux.version>2.7.15</webflux.version>
 	</properties>
 
 	<modules>

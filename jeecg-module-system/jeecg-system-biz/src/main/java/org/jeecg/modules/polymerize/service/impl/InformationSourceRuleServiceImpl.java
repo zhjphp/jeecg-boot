@@ -5,12 +5,15 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.jeecg.common.exception.JeecgBootException;
 import org.jeecg.common.util.SpringContextUtils;
 import org.jeecg.common.util.oConvertUtils;
+import org.jeecg.modules.polymerize.drawflow.model.ApiArticleRuleNode;
+import org.jeecg.modules.polymerize.drawflow.model.ApiListRuleNode;
 import org.jeecg.modules.polymerize.drawflow.model.ArticleRuleNode;
 import org.jeecg.modules.polymerize.drawflow.model.ListRuleNode;
 import org.jeecg.modules.polymerize.entity.InformationSourceRule;
 import org.jeecg.modules.polymerize.mapper.InformationSourceRuleMapper;
 import org.jeecg.modules.polymerize.playwright.CheckRulePlaywrightCrawl;
 import org.jeecg.modules.polymerize.service.IInformationSourceRuleService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -28,7 +31,10 @@ import javax.annotation.Resource;
 public class InformationSourceRuleServiceImpl extends ServiceImpl<InformationSourceRuleMapper, InformationSourceRule> implements IInformationSourceRuleService {
 
     @Resource
-    InformationSourceRuleMapper informationSourceRuleMapper;
+    private InformationSourceRuleMapper informationSourceRuleMapper;
+
+    @Autowired
+    private CheckRulePlaywrightCrawl checkRulePlaywrightCrawl;
 
     @Override
     @Transactional
@@ -50,15 +56,29 @@ public class InformationSourceRuleServiceImpl extends ServiceImpl<InformationSou
 
     @Override
     public JSONObject checkListRule(ListRuleNode listRuleNode) throws Exception {
-        CheckRulePlaywrightCrawl checkRulePlaywrightCrawl = SpringContextUtils.getApplicationContext().getBean(CheckRulePlaywrightCrawl.class);
+        //CheckRulePlaywrightCrawl checkRulePlaywrightCrawl = SpringContextUtils.getApplicationContext().getBean(CheckRulePlaywrightCrawl.class);
         JSONObject result = checkRulePlaywrightCrawl.testGetList(listRuleNode);
         return result;
     }
 
     @Override
+    public JSONObject checkApiListRule(ApiListRuleNode apiListRuleNode) throws Exception {
+        //CheckRulePlaywrightCrawl checkRulePlaywrightCrawl = SpringContextUtils.getApplicationContext().getBean(CheckRulePlaywrightCrawl.class);
+        JSONObject result = checkRulePlaywrightCrawl.testGetApiList(apiListRuleNode);
+        return result;
+    }
+
+    @Override
     public JSONObject checkArticleRule(ArticleRuleNode articleRuleNode) throws Exception {
-        CheckRulePlaywrightCrawl checkRulePlaywrightCrawl = SpringContextUtils.getApplicationContext().getBean(CheckRulePlaywrightCrawl.class);
+        //CheckRulePlaywrightCrawl checkRulePlaywrightCrawl = SpringContextUtils.getApplicationContext().getBean(CheckRulePlaywrightCrawl.class);
         JSONObject result = checkRulePlaywrightCrawl.testGetArticle(articleRuleNode);
+        return result;
+    }
+
+    @Override
+    public JSONObject checkApiArticleRule(ApiArticleRuleNode apiArticleRuleNode) throws Exception {
+        //CheckRulePlaywrightCrawl checkRulePlaywrightCrawl = SpringContextUtils.getApplicationContext().getBean(CheckRulePlaywrightCrawl.class);
+        JSONObject result = checkRulePlaywrightCrawl.testGetApiArticle(apiArticleRuleNode, null);
         return result;
     }
 

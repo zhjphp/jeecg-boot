@@ -16,6 +16,7 @@
         <module>jeecg-system-api</module>
         <module>jeecg-system-biz</module>
         <module>jeecg-system-start</module>
+        <module>jeecg-system-crawl-plugin</module>
     </modules>
 
 

@@ -29,6 +29,12 @@ public class DrawflowNode {
     /**稿件详情采集节点*/
     public static String ARTICLE_RULE_NODE = "ArticleRuleNode";
 
+    /**Api列表采集节点*/
+    public static String API_LIST_RULE_NODE = "ApiListRuleNode";
+
+    /**Api稿件详情采集节点*/
+    public static String API_ARTICLE_RULE_NODE = "ApiArticleRuleNode";
+
     /**节点ID*/
     public String id;
 

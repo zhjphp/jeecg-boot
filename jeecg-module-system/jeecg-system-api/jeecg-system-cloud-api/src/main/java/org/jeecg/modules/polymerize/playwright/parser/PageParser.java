@@ -14,19 +14,19 @@ import java.util.regex.Pattern;
 
 /**
  * @version 1.0
- * @description: TODO
+ * @description: 页面解析器
  * @author: wayne
  * @date 2023/8/10 15:07
  *
  * TODO
- * 1.开发更多表达式解析,例如字符串拼接,字符串替换,字符截取
- *
+ * 1.可集成ApiParser中的插件机制
  */
 @Data
 @Component
 @Slf4j
 public class PageParser {
 
+    /**匹配表达式类型前缀*/
     public enum LocatorType {
 
         /**xpath表达式*/
@@ -58,14 +58,23 @@ public class PageParser {
         private String expr;
     }
 
+    /**textContent超时时间配置*/
     public Locator.TextContentOptions textContentOptions;
 
+    /**getAttribute超时时间配置*/
     public Locator.GetAttributeOptions getAttributeOptions;
 
+    /**innerHTML超时时间配置*/
     public Locator.InnerHTMLOptions innerHTMLOptions;
 
+    /**waitForSelector超时时间配置*/
     private Page.WaitForSelectorOptions waitForSelectorOptions;
 
+    /**
+     * 解析表达式组到列表中
+     *
+     * @param match 匹配表达式
+     */
     public LinkedList<Node> parser(String match) throws RuntimeException {
         if (oConvertUtils.isEmpty(match)) {
             throw new RuntimeException("match 表达式为空");
@@ -111,6 +120,12 @@ public class PageParser {
         return nodeList;
     }
 
+    /**
+     * 等待页面某个Locator定位器加载完成, 用来应对页面中某个部分加载较慢的情况
+     *
+     * @param match 定位器匹配规则
+     * @param page 页面
+     */
     public void waitForSelector(String match, Page page) {
         LinkedList<Node> nodeList = parser(match);
         // 由于可能有多次locator定位,或者其他类型表达式,需要过滤一下,并取第一层xpath表达式执行waitForSelector
@@ -123,6 +138,14 @@ public class PageParser {
         }
     }
 
+    /**
+     * 列表页区块定位器解析
+     *
+     * @param match 定位器匹配规则
+     * @param locator 定位器
+     * @param page 页面
+     * @param name 匹配规则名称(预留参数,后期用来区分处理各种特殊规则)
+     */
     public Locator listPageLocatorParser(String match, Locator locator, Page page, String name) throws RuntimeException {
         log.info("listLocatorMatch filed: {}", name);
         LinkedList<Node> nodeList = parser(match);
@@ -145,22 +168,53 @@ public class PageParser {
 //        return result;
 //    }
 
+    /**
+     * 列表页内容定位器解析
+     *
+     * @param match 定位器匹配规则
+     * @param locator 定位器
+     * @param page 页面
+     * @param name 匹配规则名称(预留参数,后期用来区分处理各种特殊规则)
+     */
     public String listPageContentParser(String match, Locator locator, Page page, String content, String name) throws RuntimeException {
         log.info("listContentMatch filed: {}", name);
         return contentActuator(parser(match), locator, page, content);
     }
 
+    /**
+     * 详情页区块定位器解析
+     *
+     * @param match 定位器匹配规则
+     * @param locator 定位器
+     * @param page 页面
+     * @param name 匹配规则名称(预留参数,后期用来区分处理各种特殊规则)
+     */
     public Locator articlePageLocatorParser(String match, Locator locator, Page page, String name) throws RuntimeException {
         log.info("articleLocatorMatch filed: {}", name);
         LinkedList<Node> nodeList = parser(match);
         return locatorActuator(nodeList, locator, page);
     }
 
+    /**
+     * 详情页内容定位器解析
+     *
+     * @param match 定位器匹配规则
+     * @param locator 定位器
+     * @param page 页面
+     * @param name 匹配规则名称(预留参数,后期用来区分处理各种特殊规则)
+     */
     public String articlePageContentParser(String match, Locator locator, Page page, String content, String name) throws RuntimeException {
         log.info("articleContentMatch filed: {}", name);
         return contentActuator(parser(match), locator, page, content);
     }
 
+    /**
+     * 区块定位器解析
+     *
+     * @param nodeList 表达式组
+     * @param locator 定位器
+     * @param page 页面
+     */
     private Locator locatorActuator(LinkedList<Node> nodeList, Locator locator, Page page) throws RuntimeException {
         // 需要处理的定位器
         Locator localLocator = locator;
@@ -195,6 +249,14 @@ public class PageParser {
         return localLocator;
     }
 
+    /**
+     * 内容定位器解析
+     *
+     * @param nodeList 表达式组
+     * @param locator 定位器
+     * @param page 页面
+     * @param content 内容
+     */
     private String contentActuator(
             LinkedList<Node> nodeList,
             Locator locator,

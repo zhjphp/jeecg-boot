@@ -15,6 +15,8 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.jeecg.common.api.vo.Result;
 import org.jeecg.common.system.query.QueryGenerator;
 import org.jeecg.common.util.oConvertUtils;
+import org.jeecg.modules.polymerize.drawflow.model.ApiArticleRuleNode;
+import org.jeecg.modules.polymerize.drawflow.model.ApiListRuleNode;
 import org.jeecg.modules.polymerize.drawflow.model.ArticleRuleNode;
 import org.jeecg.modules.polymerize.drawflow.model.ListRuleNode;
 import org.jeecg.modules.polymerize.entity.InformationSourceRule;
@@ -56,13 +58,27 @@ public class InformationSourceRuleController extends JeecgController<Information
     @Autowired
     private IInformationSourceRuleService informationSourceRuleService;
 
-    @ApiOperation(value="信源规则-测试列表规则", notes="测试列表规则-checkListRule")
+    @ApiOperation(value="信源规则-测试PC列表规则", notes="测试PC列表规则-checkListRule")
     @PostMapping("/checkListRule")
     public Result<JSONObject> checkListRule(@RequestBody String jsonRequest) {
         log.info("请求内容:, {}", jsonRequest);
         ListRuleNode listRuleNode = new ListRuleNode(JSON.parseObject(jsonRequest));
         try {
             JSONObject result = informationSourceRuleService.checkListRule(listRuleNode);
+            return Result.ok(result);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error(e.getMessage());
+        }
+    }
+
+    @ApiOperation(value="信源规则-测试Api列表规则", notes="测试Api列表规则-checkApiListRule")
+    @PostMapping("/checkApiListRule")
+    public Result<JSONObject> checkApiListRule(@RequestBody String jsonRequest) {
+        log.info("请求内容:, {}", jsonRequest);
+        ApiListRuleNode apiListRuleNode = new ApiListRuleNode(JSON.parseObject(jsonRequest));
+        try {
+            JSONObject result = informationSourceRuleService.checkApiListRule(apiListRuleNode);
             return Result.ok(result);
         } catch (Exception e) {
             e.printStackTrace();
@@ -79,6 +95,21 @@ public class InformationSourceRuleController extends JeecgController<Information
             JSONObject result = informationSourceRuleService.checkArticleRule(articleRuleNode);
             return Result.ok(result);
         } catch (Exception e) {
+            log.info("测试详情规则错误: {}, {}", e.getMessage(), e.toString());
+            return Result.error(e.getMessage());
+        }
+    }
+
+    @ApiOperation(value="信源规则-测试详情规则", notes="测试详情规则-checkApiArticleRule")
+    @PostMapping("/checkApiArticleRule")
+    public Result<JSONObject> checkApiArticleRule(@RequestBody String jsonRequest) {
+        log.info("请求内容:, {}", jsonRequest);
+        ApiArticleRuleNode apiArticleRuleNode = new ApiArticleRuleNode(JSON.parseObject(jsonRequest));
+        try {
+            JSONObject result = informationSourceRuleService.checkApiArticleRule(apiArticleRuleNode);
+            return Result.ok(result);
+        } catch (Exception e) {
+            e.printStackTrace();
             log.info("测试详情规则错误: {}, {}", e.getMessage(), e.toString());
             return Result.error(e.getMessage());
         }

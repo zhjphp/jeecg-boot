@@ -1,5 +1,6 @@
 package org.jeecg.modules.polymerize.mapper;
 
+import java.util.Date;
 import java.util.List;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -26,7 +27,9 @@ public interface TmpCrawlDataMapper extends BaseMapper<TmpCrawlData> {
             @Param("customTagList") List<String> customTagList,
             @Param("informationsourceid") String informationsourceid,
             @Param("taskid") String taskid,
-            @Param("errorCode") Integer errorCode
+            @Param("errorCode") Integer errorCode,
+            @Param("startCreateTime") String startCreateTime,
+            @Param("endCreateTime") String endCreateTime
     );
 
 }
