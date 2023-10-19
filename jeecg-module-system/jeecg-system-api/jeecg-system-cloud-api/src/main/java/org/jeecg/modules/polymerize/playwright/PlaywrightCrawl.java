@@ -753,17 +753,20 @@ public class PlaywrightCrawl {
                         ( oConvertUtils.isNotEmpty(apiListRuleNode.getStartTime()) && oConvertUtils.isNotEmpty(cutDate) && cutDate.after(apiListRuleNode.getStartTime()) )
                 ) {
                     log.info("设定了有效时间段,在StartTime之后");
+                    omsLogger.info(logThreadId() + "设定了有效时间段,在StartTime之后");
                     if (
                             ( oConvertUtils.isNotEmpty(apiListRuleNode.getEndTime()) && oConvertUtils.isNotEmpty(cutDate) && cutDate.before(apiListRuleNode.getEndTime()) )
                     ) {
                         // 如果设定了起止时间,且在时间段内,则为有效数据
                         log.info("在getEndTime()之前,为有效时间段数据");
+                        omsLogger.info(logThreadId() + "在getEndTime()之前,为有效时间段数据");
                         // 记录采集结果
                         resultList.add(apiListResult);
                         articleResultList.add(articleResult);
                     } else {
                         log.info("不在getEndTime()之前,继续向前寻找");
-                        listErrorDataProcess(apiListResult.getApiUrl(), apiListResult.getTitle(), apiListResult.getDate(), "不在getEndTime()之前");
+                        omsLogger.info(logThreadId() + "不在getEndTime()之前,继续向前寻找");
+                        // listErrorDataProcess(apiListResult.getApiUrl(), apiListResult.getTitle(), apiListResult.getDate(), "不在getEndTime()之前");
                     }
                 } else if (
                         oConvertUtils.isEmpty(apiListRuleNode.getStartTime())
@@ -780,6 +783,7 @@ public class PlaywrightCrawl {
                 ) {
                     // 如果没有设定起止时间,且设定了有效天数,且在有效天数内,则为有效数据
                     log.info("没有设定起止时间,且设定了有效天数,且在有效天数内,为有效数据");
+                    omsLogger.info(logThreadId() + "没有设定起止时间,且设定了有效天数,且在有效天数内,为有效数据");
                     // 记录采集结果
                     resultList.add(apiListResult);
                     articleResultList.add(articleResult);
@@ -792,21 +796,26 @@ public class PlaywrightCrawl {
                 ) {
                     // 如果都没设定,则所有数据为有效
                     log.info("都没设定,所有数据为有效");
+                    omsLogger.info(logThreadId() + "都没设定,所有数据为有效");
                     // 记录采集结果
                     resultList.add(apiListResult);
                     articleResultList.add(articleResult);
                 } else {
                     // 其他情况,丢弃数据
                     log.info("超出目标时间范围,目标起始时间: {}, 目标结束时间: {}, 目标有效天数: {}, 稿件时间: {}", apiListRuleNode.getStartTime(), apiListRuleNode.getStartTime(), apiListRuleNode.getEffectiveDays(), cutDate);
+                    omsLogger.info(logThreadId() + "超出目标时间范围,目标起始时间: {}, 目标结束时间: {}, 目标有效天数: {}, 稿件时间: {}", apiListRuleNode.getStartTime(), apiListRuleNode.getStartTime(), apiListRuleNode.getEffectiveDays(), cutDate);
                     preventToppingCount++;
                     log.info("防止有置顶帖,继续处理,当前处理数量: {}, 配置容忍数量: {}", preventToppingCount, toppingCount);
-                    listErrorDataProcess(apiListResult.getApiUrl(), apiListResult.getTitle(), apiListResult.getDate(), "超出目标时间范围");
+                    omsLogger.info(logThreadId() + "防止有置顶帖,继续处理,当前处理数量: {}, 配置容忍数量: {}", preventToppingCount, toppingCount);
+                    // listErrorDataProcess(apiListResult.getApiUrl(), apiListResult.getTitle(), apiListResult.getDate(), "超出目标时间范围");
                     if (preventToppingCount >= toppingCount) {
                         log.info("到达置顶帖容忍数量,停止翻页");
+                        omsLogger.info(logThreadId() + "到达置顶帖容忍数量,停止翻页");
                         isPageDown = false;
                         break;
                     } else {
                         log.info("不停止翻页");
+                        omsLogger.info(logThreadId() + "没有到达置顶帖容忍数量,继续翻页");
                     }
                 }
 
@@ -1131,9 +1140,11 @@ public class PlaywrightCrawl {
         log.info("document.documentElement.scrollHeight: {}", scrollHeight.toString());
         double y = Double.parseDouble(scrollHeight.toString());
         log.info("开始执行瀑布流下拉");
+        omsLogger.info(logThreadId() + "开始执行瀑布流下拉");
         // 如果配置了底部特征
         if (oConvertUtils.isNotEmpty(bottomMatch)) {
             log.info("使用底部元素匹配规则");
+            omsLogger.info(logThreadId() + "使用底部元素匹配规则");
             for (int i = 0 ; i < 1000000; i ++) {
                 page.mouse().wheel(0, y);
                 waitForPageLoaded(page);
@@ -1149,6 +1160,7 @@ public class PlaywrightCrawl {
         } else if (oConvertUtils.isNotEmpty(pageCount) && pageCount > 0) {
             // 是否定义总下拉屏数
             log.info("使用下拉屏数: {}", pageCount);
+            omsLogger.info(logThreadId() + "使用下拉屏数: {}", pageCount);
             // 如果没有配置底部特征
             for (int i = 0 ; i < pageCount; i ++) {
                 page.mouse().wheel(0, 500);
@@ -1159,6 +1171,7 @@ public class PlaywrightCrawl {
         } else {
             // 判断区块数量是否有变化
             log.info("使用自动判断是否到底");
+            omsLogger.info(logThreadId() + "使用自动判断是否到底");
             // 每次滚动之前的总条数
             int preCount = 0;
             // 捕获到的总条数
@@ -1243,6 +1256,7 @@ public class PlaywrightCrawl {
             // 优先使用翻页深度配置
             totalPage = listRuleNode.getPageDepth();
             log.info("指定分页深度: {}", totalPage);
+            omsLogger.info(logThreadId() + "指定分页深度: {}", totalPage);
         } else if (oConvertUtils.isNotEmpty(listRuleNode.getTotalPageMatch())) {
             // 其次判断总页数匹配
             try {
@@ -1258,11 +1272,14 @@ public class PlaywrightCrawl {
                 omsLogger.warn("没有匹配到总页数,默认只有一页");
             }
             log.info("指定总页数匹配: {}", totalPage);
+            omsLogger.info(logThreadId() + "指定总页数匹配: {}", totalPage);
         } else if (oConvertUtils.isNotEmpty(listRuleNode.getTotalCountMatch())) {
             log.info("使用总稿件数量匹配");
+            omsLogger.info(logThreadId() + "使用总稿件数量匹配");
             // 判断是否配置总稿件数量匹配
             Integer totalCount = Integer.parseInt(listPageContentParser(listRuleNode.getTotalCountMatch(), null, listPage, RuleNodeUtil.getFiledName(ListRuleNode::getTotalCountMatch)));
             log.info("使用总稿件数量为: {}", totalCount);
+            omsLogger.info(logThreadId() + "使用总稿件数量为: {}", totalCount);
             if (totalCount != null && totalCount > 0) {
                 // 查看是否指定每页稿件数量
                 if ( oConvertUtils.isNotEmpty(listRuleNode.getPageCount()) && listRuleNode.getPageCount() > 0 ) {
@@ -1272,6 +1289,7 @@ public class PlaywrightCrawl {
                         totalPage+=1;
                     }
                     log.info("指定每页稿件数量: {}", pageCount);
+                    omsLogger.info(logThreadId() + "指定每页稿件数量: {}", pageCount);
                 } else {
                     // 如果没有指定每页数量,则需要判断每页的稿件数量
                     List<Locator> locators = listPage.locator(listRuleNode.getPageMatch()).all();
@@ -1282,8 +1300,10 @@ public class PlaywrightCrawl {
                             totalPage+=1;
                         }
                         log.info("自动判断每页稿件数量: {}", pageCount);
+                        omsLogger.info(logThreadId() + "自动判断每页稿件数量: {}", pageCount);
                     } else {
                         log.warn("自动获取每页稿件数量异常, pageCount: {}", pageCount);
+                        omsLogger.info(logThreadId() + "自动获取每页稿件数量异常, pageCount: {}", pageCount);
                     }
                 }
             }
@@ -1312,6 +1332,7 @@ public class PlaywrightCrawl {
             } catch (TimeoutError e) {
                 // 此处不做处理,页面继续执行
                 log.warn("加载列表页未找到区块定位内容");
+                omsLogger.warn(logThreadId() + "加载列表页未找到区块定位内容");
             }
             // 滚动条到底
             int scrollCount = listPageScrollPageCount;
@@ -1388,6 +1409,7 @@ public class PlaywrightCrawl {
                         listErrorDataProcess(listResult.getUrl(), listResult.getTitle(), listResult.getDate(), "无法获取稿件url");
                     } else if ( !URLUtils.isSameDomainName(articleUrl, listPage.url()) && !listRuleNode.getEnableOutside() ) {
                         log.info("当前条目为外链内容,不进行采集: {}", listResult.toString());
+                        omsLogger.info(logThreadId() + "当前条目为外链内容,不进行采集: {}", listResult.toString());
                         listErrorDataProcess(listResult.getUrl(), listResult.getTitle(), listResult.getDate(), "外链");
                     } else {
                         // 判断日期是否为目标时间段的数据
@@ -1395,15 +1417,18 @@ public class PlaywrightCrawl {
                                 ( oConvertUtils.isNotEmpty(listRuleNode.getStartTime()) && oConvertUtils.isNotEmpty(cutDate) && cutDate.after(listRuleNode.getStartTime()) )
                         ) {
                             log.info("设定了有效时间段,在StartTime之后");
+                            omsLogger.info(logThreadId() + "设定了有效时间段,在StartTime之后");
                             if (
                                     ( oConvertUtils.isNotEmpty(listRuleNode.getEndTime()) && oConvertUtils.isNotEmpty(cutDate) && cutDate.before(listRuleNode.getEndTime()) )
                             ) {
                                 // 如果设定了起止时间,且在时间段内,则为有效数据
                                 log.info("在getEndTime()之前,为有效时间段数据");
+                                omsLogger.info(logThreadId() + "在getEndTime()之前,为有效时间段数据");
                                 resultList.add(listResult);
                             } else {
                                 log.info("不在getEndTime()之前,继续向前寻找");
-                                listErrorDataProcess(listResult.getUrl(), listResult.getTitle(), listResult.getDate(), "不在getEndTime()之前");
+                                omsLogger.info(logThreadId() + "不在getEndTime()之前,继续向前寻找");
+                                // listErrorDataProcess(listResult.getUrl(), listResult.getTitle(), listResult.getDate(), "不在getEndTime()之前");
                             }
                         } else if (
                                 oConvertUtils.isEmpty(listRuleNode.getStartTime())
@@ -1420,6 +1445,7 @@ public class PlaywrightCrawl {
                         ) {
                             // 如果没有设定起止时间,且设定了有效天数,且在有效天数内,则为有效数据
                             log.info("没有设定起止时间,且设定了有效天数,且在有效天数内,为有效数据");
+                            omsLogger.info(logThreadId() + "没有设定起止时间,且设定了有效天数,且在有效天数内,为有效数据");
                             resultList.add(listResult);
                         } else if (
                                 oConvertUtils.isEmpty(listRuleNode.getStartTime())
@@ -1430,19 +1456,25 @@ public class PlaywrightCrawl {
                         ) {
                             // 如果都没设定,则所有数据为有效
                             log.info("都没设定,所有数据为有效");
+                            omsLogger.info(logThreadId() + "都没设定,所有数据为有效");
                             resultList.add(listResult);
                         } else {
                             // 其他情况,丢弃数据
                             log.info("超出目标时间范围,目标起始时间: {}, 目标结束时间: {}, 目标有效天数: {}, 稿件时间: {}", listRuleNode.getStartTime(), listRuleNode.getStartTime(), listRuleNode.getEffectiveDays(), cutDate);
+                            omsLogger.info(logThreadId() + "超出目标时间范围,目标起始时间: {}, 目标结束时间: {}, 目标有效天数: {}, 稿件时间: {}", listRuleNode.getStartTime(), listRuleNode.getStartTime(), listRuleNode.getEffectiveDays(), cutDate);
                             preventToppingCount++;
                             log.info("防止有置顶帖,继续处理,当前处理数量: {}, 配置容忍数量: {}", preventToppingCount, toppingCount);
-                            listErrorDataProcess(listResult.getUrl(), listResult.getTitle(), listResult.getDate(), "超出目标时间范围");
+                            omsLogger.info(logThreadId() + "防止有置顶帖,继续处理,当前处理数量: {}, 配置容忍数量: {}", preventToppingCount, toppingCount);
+                            // listErrorDataProcess(listResult.getUrl(), listResult.getTitle(), listResult.getDate(), "超出目标时间范围");
+                            omsLogger.info(logThreadId() + "超出目标时间范围,不记录数据");
                             if (preventToppingCount >= toppingCount) {
                                 log.info("到达置顶帖容忍数量,停止翻页");
+                                omsLogger.info(logThreadId() + "到达置顶帖容忍数量,停止翻页");
                                 isPageDown = false;
                                 break;
                             } else {
                                 log.info("不停止翻页");
+                                omsLogger.info(logThreadId() + "不停止翻页");
                             }
                         }
                     }
@@ -1465,6 +1497,7 @@ public class PlaywrightCrawl {
                 // 判断是否设置下一页按钮匹配,如果没有设定,则不执行翻页
                 if (oConvertUtils.isEmpty(listRuleNode.getNextMatch())) {
                     log.info("没有设置翻页按钮匹配,列表执行结束,停止翻页");
+                    omsLogger.info(logThreadId() + "没有设置翻页按钮匹配,列表执行结束,停止翻页");
                     break;
                 }
                 // 判断下一页按钮是否可用
@@ -1474,9 +1507,11 @@ public class PlaywrightCrawl {
                 if (nextButton.count() == 1) {
                     if (nextButton.isDisabled()) {
                         log.info("下一页按钮禁用,列表执行结束,停止翻页");
+                        omsLogger.info(logThreadId() + "下一页按钮禁用,列表执行结束,停止翻页");
                         break;
                     } else {
                         log.info("点击下一页");
+                        omsLogger.info(logThreadId() + "点击下一页");
                         String tmpPreUrl = listPage.url();
                         try {
                             nextButton.click();
@@ -1505,6 +1540,7 @@ public class PlaywrightCrawl {
                 // Thread.sleep(sleepTime);
             } else {
                 log.info("列表执行结束,停止翻页");
+                omsLogger.warn(logThreadId() + "列表执行结束,停止翻页");
                 break;
             }
         }
@@ -1962,7 +1998,7 @@ public class PlaywrightCrawl {
                         // 过滤数据
                         if (fieldName.equals("content")) {
                             // 过滤文章详情
-                            log.info("uuuuuuuuuuuuuuuu:" + articleResult.getUrl());
+                            log.info("url:" + articleResult.getUrl());
                             URL urlObj = new URL(articleResult.getUrl());
                             String baseUri = urlObj.getProtocol() + "://" + urlObj.getHost();
                             field.set(articleResult, PlaywrightDataFilter.filterArticleContent(fieldValue, baseUri));
