@@ -40,6 +40,12 @@ public class TmpCrawlDataServiceImpl extends ServiceImpl<TmpCrawlDataMapper, Tmp
         if (oConvertUtils.isNotEmpty(tmpCrawlDataDTO.getCustomTags())) {
             customTagList = Arrays.stream(tmpCrawlDataDTO.getCustomTags().split(",")).collect(Collectors.toList());
         }
+
+        List<String> cityList = null;
+        if (oConvertUtils.isNotEmpty(tmpCrawlDataDTO.getCity())) {
+            cityList = Arrays.stream(tmpCrawlDataDTO.getCity().split(",")).collect(Collectors.toList());
+        }
+
         IPage<TmpCrawlData> pageList = tmpCrawlDataMapper.queryTmpCrawlData(
                 page,
                 tmpCrawlDataDTO.getInformationSourceName(),
@@ -50,7 +56,8 @@ public class TmpCrawlDataServiceImpl extends ServiceImpl<TmpCrawlDataMapper, Tmp
                 tmpCrawlDataDTO.getTaskid(),
                 tmpCrawlDataDTO.getErrorCode(),
                 tmpCrawlDataDTO.getStartCreateTime(),
-                tmpCrawlDataDTO.getEndCreateTime()
+                tmpCrawlDataDTO.getEndCreateTime(),
+                cityList
         );
         return pageList;
     }

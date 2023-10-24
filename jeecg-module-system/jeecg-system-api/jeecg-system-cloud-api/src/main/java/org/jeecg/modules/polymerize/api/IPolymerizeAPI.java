@@ -33,4 +33,7 @@ public interface IPolymerizeAPI {
     @PostMapping("/polymerize/api/addTmpCrawlData")
     boolean addTmpCrawlData(@RequestBody TmpCrawlData tmpCrawlData);
 
+    @PostMapping("/polymerize/dzw/api/addTmpCrawlDataForDzw")
+    boolean addTmpCrawlDataForDzw(@RequestBody TmpCrawlData tmpCrawlData);
+
 }

@@ -61,6 +61,7 @@ public class TmpCrawlData implements Serializable {
         customTags = articleResult.getCustomTags();
         topic = articleResult.getTopic();
         reason = articleResult.getReason();
+        city = articleResult.getCity();
     }
 
 	/**主键*/
@@ -176,4 +177,8 @@ public class TmpCrawlData implements Serializable {
     @Excel(name = "栏目名称", width = 15)
     @ApiModelProperty(value = "栏目名称")
     private String topic;
+    /**城市名称*/
+    @Excel(name = "城市名称", width = 15)
+    @ApiModelProperty(value = "城市名称")
+    private String city;
 }

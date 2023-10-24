@@ -26,6 +26,7 @@ import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 import tech.powerjob.worker.log.OmsLogger;
 
 import javax.annotation.Resource;
@@ -1818,6 +1819,7 @@ public class PlaywrightCrawl {
                         // log.info("稿件内容采集完成: \nurl: {} \ntitle: {} \narticleResult: {}", articleResult.getUrl(), articleResult.getTitle(), articleResult.toString());
                         log.info("稿件内容采集完成: \nurl: {} \ntitle: {} ", articleResult.getUrl(), articleResult.getTitle());
                         omsLogger.info(logThreadId() + "稿件内容采集完成: \nurl: {} \ntitle: {} ", articleResult.getUrl(), articleResult.getTitle());
+                        omsLogger.info("将数据推入存储处理队列！ ");
                         // 将数据推入存储处理队列
                         articleDataProcess(articleResult);
                         articlePage.waitForTimeout(sleepTime);
@@ -1906,8 +1908,19 @@ public class PlaywrightCrawl {
         }
         // 3.存储数据
         log.info("开始存储数据:");
+        boolean result = false;
         TmpCrawlData tmpCrawlData = new TmpCrawlData(articleResult);
-        boolean result = dataStorageService.addTmpCrawlData(tmpCrawlData);
+
+        if(oConvertUtils.isNotEmpty(tmpCrawlData.getCustomTags()) && tmpCrawlData.getCustomTags().startsWith("dzw")){
+            //若自定義標籤custom_tags為dzw開頭則存儲到33.191
+            log.info("开始存储数据到dzw:");
+            result = dataStorageService.addTmpCrawlDataForDzw(tmpCrawlData);
+        }else{
+            //默認存儲數據到16.211
+            log.info("开始存储数据到默認:");
+            result = dataStorageService.addTmpCrawlData(tmpCrawlData);
+        }
+
         if (result) {
             log.info("数据存储成功: ", articleResult.getUrl());
             omsLogger.info(logThreadId() + "数据存储成功: ", articleResult.getUrl());

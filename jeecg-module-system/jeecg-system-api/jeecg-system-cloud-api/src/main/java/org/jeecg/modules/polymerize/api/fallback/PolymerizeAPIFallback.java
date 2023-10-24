@@ -55,4 +55,9 @@ public class PolymerizeAPIFallback implements IPolymerizeAPI {
         return false;
     }
 
+    @Override
+    public boolean addTmpCrawlDataForDzw(@RequestBody TmpCrawlData tmpCrawlData) {
+        log.error("addTmpCrawlData 请求失败");
+        return false;
+    }
 }

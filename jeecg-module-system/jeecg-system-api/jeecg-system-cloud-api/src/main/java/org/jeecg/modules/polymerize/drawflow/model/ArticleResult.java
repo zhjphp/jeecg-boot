@@ -3,6 +3,7 @@ package org.jeecg.modules.polymerize.drawflow.model;
 import lombok.Data;
 
 import java.util.Date;
+import java.util.List;
 
 /**
  * @version 1.0
@@ -75,5 +76,8 @@ public class ArticleResult {
 
     /**错误原因*/
     public String reason;
+
+    /**城市*/
+    public String city;
 
 }

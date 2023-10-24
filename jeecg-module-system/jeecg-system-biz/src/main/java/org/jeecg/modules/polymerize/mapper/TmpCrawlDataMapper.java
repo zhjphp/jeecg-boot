@@ -29,7 +29,8 @@ public interface TmpCrawlDataMapper extends BaseMapper<TmpCrawlData> {
             @Param("taskid") String taskid,
             @Param("errorCode") Integer errorCode,
             @Param("startCreateTime") String startCreateTime,
-            @Param("endCreateTime") String endCreateTime
+            @Param("endCreateTime") String endCreateTime,
+            @Param("city") List<String> city
     );
 
 }

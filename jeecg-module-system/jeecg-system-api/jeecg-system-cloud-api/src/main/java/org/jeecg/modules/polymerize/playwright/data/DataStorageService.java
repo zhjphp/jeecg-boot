@@ -44,6 +44,13 @@ public class DataStorageService {
         return polymerizeAPI.addTmpCrawlData(tmpCrawlData);
     }
 
+    public boolean addTmpCrawlDataForDzw(TmpCrawlData tmpCrawlData) {
+        // 设置线程会话Token
+        UserTokenContext.setToken(getTemporaryToken());
+        // log.info("写入数据: {}", tmpCrawlData.toString());
+        return polymerizeAPI.addTmpCrawlDataForDzw(tmpCrawlData);
+    }
+
     public String getTemporaryToken() {
         PolymerizeRedisUtil polymerizeRedisUtil = SpringContextUtils.getBean(PolymerizeRedisUtil.class);
         // 模拟登录生成Token
