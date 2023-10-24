@@ -41,6 +41,12 @@
                 find_in_set(#{item}, custom_tags)
             </foreach>
         </if>
+        <if test='cityList != null and cityList.size > 0'>
+            AND
+            <foreach collection="cityList" item="item" separator="AND">
+                find_in_set(#{item}, city)
+            </foreach>
+        </if>
     </select>
 
 </mapper>

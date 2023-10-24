@@ -1,15 +1,12 @@
 package org.jeecg.modules.polymerize.mapper;
 
-import java.util.Date;
 import java.util.List;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.apache.ibatis.annotations.Param;
-import org.jeecg.modules.polymerize.dto.TmpCrawlDataDTO;
 import org.jeecg.modules.polymerize.entity.TmpCrawlData;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import org.jeecg.modules.polymerize.vo.InformationSourceVO;
 
 /**
  * @Description: 爬虫临时数据存储
@@ -30,7 +27,7 @@ public interface TmpCrawlDataMapper extends BaseMapper<TmpCrawlData> {
             @Param("errorCode") Integer errorCode,
             @Param("startCreateTime") String startCreateTime,
             @Param("endCreateTime") String endCreateTime,
-            @Param("city") List<String> city
+            @Param("cityList") List<String> city
     );
 
 }
