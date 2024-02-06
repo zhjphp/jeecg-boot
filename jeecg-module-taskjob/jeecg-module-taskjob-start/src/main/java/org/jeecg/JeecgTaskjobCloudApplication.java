@@ -13,6 +13,8 @@ import org.jeecg.common.base.BaseMap;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import java.net.InetAddress;
+
 @Slf4j
 @SpringBootApplication
 @EnableFeignClients(basePackages = {"org.jeecg"})
@@ -24,9 +26,14 @@ public class JeecgTaskjobCloudApplication implements CommandLineRunner {
         // SpringApplication.run(JeecgTaskjobCloudApplication.class, args);
         ConfigurableApplicationContext application = SpringApplication.run(JeecgTaskjobCloudApplication.class, args);
         Environment env = application.getEnvironment();
-        String ip = oConvertUtils.getRealIp();
+//        String ip = env.getProperty("server.ip");
+//        String port = env.getProperty("server.port");
+//        String path = oConvertUtils.getString(env.getProperty("server.servlet.context-path"));
+
+        String ip = InetAddress.getLocalHost().getHostAddress();
         String port = env.getProperty("server.port");
         String path = oConvertUtils.getString(env.getProperty("server.servlet.context-path"));
+
         log.info("\n----------------------------------------------------------\n\t" +
                 "service jeecg-consumer is running! Access URLs:\n\t" +
                 "Local: \t\thttp://localhost:" + port + path + "/doc.html\n" +

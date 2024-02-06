@@ -127,6 +127,8 @@ public class ConsumerServiceImpl implements IConsumerService {
                 }
             }
         } catch (Exception e) {
+            log.info("=======================================================");
+            log.info("consumer捕获异常");
             // 删除redis已经写入的任务队列
             polymerizeRedisUtil.del(redisQueueKey);
             throw e;

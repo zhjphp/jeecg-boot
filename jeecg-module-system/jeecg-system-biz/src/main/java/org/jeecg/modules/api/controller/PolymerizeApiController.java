@@ -45,7 +45,8 @@ public class PolymerizeApiController {
      */
     @GetMapping("/queryTaskById")
     public InformationSourceTask queryTaskById(@RequestParam("id") String id) {
-        return informationSourceTaskService.getById(id);
+        InformationSourceTask byId = informationSourceTaskService.getById(id);
+        return byId;
     }
 
     /**
@@ -55,7 +56,9 @@ public class PolymerizeApiController {
      */
     @GetMapping("/queryCrawById")
     public Crawl queryCrawlById(@RequestParam("id") String id) {
-        return crawlService.getById(id);
+        Crawl byId = crawlService.getById(id);
+
+        return byId;
     }
 
     /**
@@ -65,7 +68,9 @@ public class PolymerizeApiController {
      */
     @GetMapping("/queryInformationSourceById")
     public InformationSource queryInformationSourceById(@RequestParam("id") String id) {
-        return informationSourceService.getById(id);
+        System.out.println("调用了服务器");
+        InformationSource byId = informationSourceService.getById(id);
+        return byId;
     }
 
     /**
