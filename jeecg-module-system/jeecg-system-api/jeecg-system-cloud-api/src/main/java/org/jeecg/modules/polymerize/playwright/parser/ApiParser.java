@@ -383,6 +383,7 @@ public class ApiParser {
                     // 如果变量池中没有此变量,则使用第一个参数进行初始化,如果已有变量则使用第二个参数
                     if (!paramPool.containsKey(paramName)) {
                         // 如果变量池中没有此变量,则使用第一个参数进行初始化
+                        log.info("执行func=once时,缺失第二变量,使用第一变量进行初始化:{}", paramExprList.get(0));
                         result = paramExprList.get(0);
                     } else {
                         // 如果已有变量,则使用第二个参数作为结果
