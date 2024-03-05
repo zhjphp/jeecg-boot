@@ -397,6 +397,10 @@ public class CheckRulePlaywrightCrawl {
             String method = apiListRuleNode.getMethod();
             String url = startUrl;
             String contentType = apiListRuleNode.getContentType();
+            // 先解析自定义参数变量
+            if (oConvertUtils.isNotEmpty(apiListRuleNode.getCustomParam())) {
+                apiParser.parseCustomParam(apiListRuleNode.getCustomParam());
+            }
             // 列表翻页循环关键参数
             // 总页数(默认1)
             Integer totalPage = 1;
@@ -496,7 +500,7 @@ public class CheckRulePlaywrightCrawl {
                     // 解析详情ID
                     String articleId = null;
                     if (oConvertUtils.isNotEmpty(apiListRuleNode.getArticleIdMatch())) {
-                        articleId = apiParser.doParse(elementJson, apiListRuleNode.getArticleIdMatch(), RuleNodeUtil.getFiledName(ApiListRuleNode::getArticleIdMatch), true);
+                        articleId = apiParser.doParse(elementJson, apiListRuleNode.getArticleIdMatch(), RuleNodeUtil.getFiledName(ApiListRuleNode::getArticleIdMatch), false);
                     }
                     apiListResult.setArticleId(articleId);
                     log.info("解析详情ID: {}", articleId);
