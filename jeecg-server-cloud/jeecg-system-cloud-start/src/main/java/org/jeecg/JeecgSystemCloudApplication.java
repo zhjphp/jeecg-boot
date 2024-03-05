@@ -15,7 +15,6 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.env.Environment;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.scheduling.annotation.EnableScheduling;
-import org.springframework.web.socket.config.annotation.EnableWebSocket;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -30,7 +29,6 @@ import java.net.UnknownHostException;
 @SpringBootApplication
 @EnableFeignClients(basePackages = {"org.jeecg"})
 @EnableScheduling
-@EnableWebSocket
 public class JeecgSystemCloudApplication extends SpringBootServletInitializer implements CommandLineRunner {
 
     @Autowired
