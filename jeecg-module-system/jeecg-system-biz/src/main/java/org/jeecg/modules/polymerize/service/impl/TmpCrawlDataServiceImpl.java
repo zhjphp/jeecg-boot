@@ -14,6 +14,7 @@ import org.jeecg.modules.polymerize.vo.InformationSourceVO;
 import org.springframework.stereotype.Service;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import scala.None;
 
 import javax.annotation.Resource;
 import java.sql.SQLException;
@@ -70,6 +71,17 @@ public class TmpCrawlDataServiceImpl extends ServiceImpl<TmpCrawlDataMapper, Tmp
         long count = tmpCrawlDataMapper.selectCount(queryWrapper);
         log.info("addTmpCrawlData-url: {}, count: {}", tmpCrawlData.getUrl(), count);
         if ( count >= 1) {
+            log.info("数据标签");
+            log.info(tmpCrawlData.getCustomTags());
+            //更新custom_tag
+            TmpCrawlData tmpCrawlData1 = tmpCrawlDataMapper.selectOne(queryWrapper);
+            if(!tmpCrawlData.getCustomTags().equals("") || tmpCrawlData.getCustomTags()!= null){
+                log.info("数据执行更新");
+                if(!tmpCrawlData1.getCustomTags().contains(tmpCrawlData.getCustomTags())){
+                    tmpCrawlData1.setCustomTags(tmpCrawlData1.getCustomTags()+","+tmpCrawlData.getCustomTags());
+                    tmpCrawlDataMapper.updateById(tmpCrawlData1);
+                }
+            }
             log.info("重复数据,不执行插入");
             return true;
         }

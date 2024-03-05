@@ -110,7 +110,7 @@ public class CommandServiceImpl implements ICommandService {
             if (OSUtil.isWindows()) {
                 osType = "windows";
                 program = "powershell";
-                outputCharset = "GBK";
+                outputCharset = "UTF-8";
             } else if (OSUtil.isLinux()) {
                 osType = "linux";
                 program = "bash";
