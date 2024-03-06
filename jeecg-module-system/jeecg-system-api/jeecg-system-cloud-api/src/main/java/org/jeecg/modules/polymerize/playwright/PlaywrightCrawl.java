@@ -658,12 +658,15 @@ public class PlaywrightCrawl {
                 // 直接在列表中采集数据使用的数据存储对象
                 ArticleResult articleResult = new ArticleResult();
                 // 如果指定在列表页中直接采集数据
-                if (apiListRuleNode.inListFlag) {
+                if (apiListRuleNode.inListFlag!=null) {
                     articleResult.setInformationSourceId(informationSourceId);
                     articleResult.setTaskId(taskId);
                     articleResult.setJobId(jobId);
                     articleResult.setInformationSourceDomain(informationSourceDomain);
                     articleResult.setInformationSourceName(informationSourceName);
+
+                    articleResult.setCustomTags(apiListRuleNode.getCustomTags());
+
                     // 标题
                     articleResult.setTitle(articleTitle);
                     // url
@@ -825,7 +828,7 @@ public class PlaywrightCrawl {
             }
 
             // 判断是否在列表中直接采集数据
-            if (apiListRuleNode.inListFlag) {
+            if (apiListRuleNode.inListFlag!=null) {
                 log.info("列表中采集数据 articleResultList: {}", articleResultList);
                 omsLogger.info(logThreadId() + "列表中采集数据 articleResultList: {}", articleResultList);
                 // 指定在列表中采集,则直接存储数据
@@ -911,6 +914,9 @@ public class PlaywrightCrawl {
         }
         // 数据库中存储的url字段
         articleResult.setUrl(articleUrl + "${articleId}=" + articleId);
+        articleResult.setCustomTags(apiArticleRuleNode.getCustomTags());
+        omsLogger.info("获得api标签"+apiArticleRuleNode.getCustomTags());
+
         // 解析稿件内容
         try {
             // 解析详情标题

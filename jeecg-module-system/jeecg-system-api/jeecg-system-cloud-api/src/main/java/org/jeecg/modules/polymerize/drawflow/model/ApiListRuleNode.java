@@ -41,7 +41,13 @@ public class ApiListRuleNode {
         reqUrlParam = obj.getString("reqUrlParam");
         pageDepth = obj.getInteger("pageDepth");
         resultCustomParam = obj.getJSONArray("resultCustomParam");
+
+        customTags = obj.getString("customTags");
+
     }
+
+    /**自定义标签*/
+    public String customTags;
 
     /**测试页URL*/
     public String checkRuleUrl;
